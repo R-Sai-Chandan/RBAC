@@ -1,0 +1,5 @@
+DATABASE_URL="postgresql://RBAC-Guy:Apple%40123@localhost:5432/RBAC"
+
+This is what is inside .env file of backend since we will ahev to create a psotgres user 
+and stuff for you call me tomrrow i will help setup for you and if neceesary we can chagne 
+to a more simpler password
