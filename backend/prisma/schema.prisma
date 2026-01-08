@@ -12,3 +12,524 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+////////////////////////////////////////////////////////////
+// ORGANIZATIONS
+////////////////////////////////////////////////////////////
+
+model Organization {
+  id BigInt @id @default(autoincrement())
+  companyName String
+  companyLogo String?
+  address    String?
+  city       String?
+  state      String?
+  postalCode String?
+  country    String?
+  phone   String?
+  fax     String?
+  website String?
+  facebook String?
+  twitter  String?
+  linkedin String?
+
+  financialYearStartMonth Int
+  // CHECK:
+  // Value must be between 1 and 12 (represents month)
+
+  gstin String
+  isActive Boolean @default(true)
+
+  createdAt DateTime?
+  createdBy BigInt?
+  updatedAt DateTime?
+
+  users Users[]
+
+  @@index([companyName])
+  @@map("organizations")
+}
+
+////////////////////////////////////////////////////////////
+// USERS
+////////////////////////////////////////////////////////////
+
+model Users {
+  id BigInt @id @default(autoincrement())
+  organizationId BigInt
+
+  username     String
+  passwordHash String
+
+  status String
+  // CHECK:
+  // Allowed values: active, inactive, deleted
+
+  firstName  String?
+  lastName   String
+  title      String?
+  department String?
+
+  reportsToUserId BigInt?
+  primaryGroupId  BigInt?
+
+  primaryEmail   String
+  secondaryEmail String?
+  otherEmail     String?
+
+  officePhone    String?
+  mobilePhone    String?
+  homePhone      String?
+  secondaryPhone String?
+  fax            String?
+
+  street     String?
+  city       String?
+  state      String?
+  country    String?
+  postalCode String?
+
+  timezone      String?
+  businessHours Json?
+
+  defaultLandingPage String?
+  defaultRecordView  String?
+  nameFormat         String?
+  phoneCountryCode   String?
+  fullScreenPreview  Boolean?
+
+  preferredCurrency    String?
+  digitGroupingPattern String?
+  decimalSeparator     String?
+  decimalPrecision     Int?
+
+  symbolPlacement String?
+  // CHECK:
+  // Allowed values: before, after
+
+  trailingZeroHandling String?
+  // CHECK:
+  // Allowed values: show, hide
+
+  aggregationFormat String?
+  signature String?
+
+  createdAt DateTime?
+  createdBy BigInt?
+  updatedAt DateTime?
+  updatedBy BigInt?
+
+  lastLoginAt        DateTime?
+  passwordChangedAt DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  manager      Users?  @relation("UserHierarchy", fields: [reportsToUserId], references: [id])
+  subordinates Users[] @relation("UserHierarchy")
+
+  // TRIGGER (cross-table, deferred):
+  // Any user MUST have at least one row in user_roles
+  //Enforce via DEFERRED trigger and Validate at COMMIT, not per statement
+  //Trigger should fire on:
+  //users INSERT / UPDATE(status)
+  //user_roles DELETE
+
+  @@unique([organizationId, username])
+  @@index([organizationId])
+  @@index([primaryEmail])
+  @@map("users")
+}
+
+////////////////////////////////////////////////////////////
+// ROLES
+////////////////////////////////////////////////////////////
+
+model Roles {
+  id BigInt @id @default(autoincrement())
+  organizationId BigInt
+
+  name        String
+  code        String
+  description String?
+
+  parentRoleId BigInt?
+  isActive Boolean?
+
+  createdAt DateTime?
+  createdBy BigInt?
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  parentRole Roles?  @relation("RoleTree", fields: [parentRoleId], references: [id])
+  childRoles Roles[] @relation("RoleTree")
+
+  // CHECK:
+  // parentRoleId must not be equal to id
+  //
+  // TRIGGER:
+  // parentRole must belong to the same organization
+  // No circular references allowed (strict tree)
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+  @@index([parentRoleId])
+  @@map("roles")
+}
+
+////////////////////////////////////////////////////////////
+// USER ↔ ROLE MAPPING
+////////////////////////////////////////////////////////////
+
+model UserRoles {
+  organizationId BigInt
+  userId BigInt
+  roleId BigInt
+
+  assignedAt DateTime?
+  assignedBy BigInt?
+
+  user Users @relation(fields: [userId], references: [id])
+  role Roles @relation(fields: [roleId], references: [id])
+
+  @@id([organizationId, userId, roleId])
+  @@index([organizationId, userId])
+  @@map("user_roles")
+}
+
+////////////////////////////////////////////////////////////
+// PROFILES
+////////////////////////////////////////////////////////////
+
+model Profiles {
+  id BigInt @id @default(autoincrement())
+  organizationId BigInt
+
+  name        String
+  code        String
+  description String?
+
+  isActive Boolean?
+
+  createdAt DateTime?
+  createdBy BigInt?
+
+  @@unique([organizationId, code])
+  @@map("profiles")
+}
+
+////////////////////////////////////////////////////////////
+// ROLE ↔ PROFILE
+////////////////////////////////////////////////////////////
+
+model RoleProfiles {
+  organizationId BigInt
+  roleId BigInt
+  profileId BigInt
+
+  assignedAt DateTime?
+  assignedBy BigInt?
+
+  @@id([organizationId, roleId, profileId])
+  @@map("role_profiles")
+}
+
+////////////////////////////////////////////////////////////
+// MODULES
+////////////////////////////////////////////////////////////
+
+model Modules {
+  id BigInt @id @default(autoincrement())
+  organizationId BigInt
+
+  name        String
+  code        String
+  description String?
+
+  isActive Boolean?
+  sortOrder Int?
+
+  @@unique([organizationId, code])
+  @@map("modules")
+}
+
+////////////////////////////////////////////////////////////
+// PERMISSIONS
+////////////////////////////////////////////////////////////
+
+model Permissions {
+  id BigInt @id @default(autoincrement())
+  organizationId BigInt
+  moduleId BigInt
+
+  action String
+  // CHECK:
+  // Allowed values: create, read, update, delete, export
+
+  description String?
+  isActive Boolean?
+
+  @@unique([organizationId, moduleId, action])
+  @@map("permissions")
+}
+
+////////////////////////////////////////////////////////////
+// PROFILE ↔ PERMISSIONS
+////////////////////////////////////////////////////////////
+
+model ProfilePermissions {
+  organizationId BigInt
+  profileId BigInt
+  permissionId BigInt
+
+  effect String
+  // CHECK:
+  // Allowed values: allow, deny
+
+  @@id([organizationId, profileId, permissionId])
+  @@map("profile_permissions")
+}
+
+////////////////////////////////////////////////////////////
+// GROUPS
+////////////////////////////////////////////////////////////
+
+model Groups {
+  id BigInt @id @default(autoincrement())
+  organizationId BigInt
+
+  name        String
+  description String?
+  isActive Boolean?
+
+  createdAt DateTime?
+  createdBy BigInt?
+
+  @@unique([organizationId, name])
+  @@map("groups")
+}
+
+////////////////////////////////////////////////////////////
+// USER ↔ GROUP
+////////////////////////////////////////////////////////////
+
+model UserGroups {
+  organizationId BigInt
+  userId BigInt
+  groupId BigInt
+
+  assignedAt DateTime?
+  assignedBy BigInt?
+
+  @@id([organizationId, userId, groupId])
+  @@map("user_groups")
+}
+
+////////////////////////////////////////////////////////////
+// SHARING RULES
+////////////////////////////////////////////////////////////
+
+model SharingRules {
+  id BigInt @id @default(autoincrement())
+  organizationId BigInt
+
+  ruleType String
+  // CHECK:
+  // Allowed values:
+  // user_to_user, role_to_role, group_to_group, record_level
+  //
+  // TRIGGER:
+  // Based on ruleType:
+  // - user_to_user → sourceUserId & targetUserId required
+  // - role_to_role → sourceRoleId & targetRoleId required
+  // - group_to_group → sourceGroupId & targetGroupId required
+  // - record_level → moduleId required
+  //Race condition
+
+ //Partial updates:
+ 
+ //UPDATE sharing_rules SET rule_type = 'group_to_group'
+
+
+ //but IDs updated in later statement
+
+ //✅ Mitigation
+
+ //Trigger must:
+
+ //Validate entire row
+
+ //Reject partial invalid states unless transaction-scoped
+
+ //Edge cases
+
+ //Updating rule_type on existing rows
+
+ //Mixed rule definitions
+
+ //Best practice
+
+ //Treat sharing_rules as immutable
+
+ //Disallow UPDATE of rule_type
+
+ //Use DELETE + INSERT instead
+
+
+  sourceUserId BigInt?
+  targetUserId BigInt?
+
+  sourceRoleId BigInt?
+  targetRoleId BigInt?
+
+  sourceGroupId BigInt?
+  targetGroupId BigInt?
+
+  moduleId BigInt?
+
+  isActive Boolean?
+
+  createdAt DateTime?
+  createdBy BigInt?
+
+  @@map("sharing_rules")
+}
+
+////////////////////////////////////////////////////////////
+// RECORD SHARES
+////////////////////////////////////////////////////////////
+
+model RecordShares {
+  id BigInt @id @default(autoincrement())
+  organizationId BigInt
+
+  moduleId BigInt
+  recordId BigInt
+
+  sharedWithUserId  BigInt?
+  sharedWithGroupId BigInt?
+  sharedWithRoleId  BigInt?
+
+  // TRIGGER:
+  // Exactly one of sharedWithUserId, sharedWithGroupId,
+  // or sharedWithRoleId must be non-null
+  ❌ Race condition
+
+ //Two concurrent updates set different columns
+
+ //Or UPDATE clears one but fails before setting another
+
+ //✅ Mitigation
+
+ //Trigger validates:
+
+ //count(non-null targets) == 1
+
+ //Must run on:
+
+ //INSERT
+
+ //UPDATE
+
+ //Edge cases
+
+ //Record reassignment
+
+ //Partial patch APIs
+
+ //Best practice
+
+ //Make record_shares append-only
+
+ //No UPDATEs; only INSERT or DELETE
+
+  createdAt DateTime?
+  createdBy BigInt?
+
+  @@index([organizationId, moduleId, recordId])
+  @@map("record_shares")
+}
+
+////////////////////////////////////////////////////////////
+// SMTP CONFIG
+////////////////////////////////////////////////////////////
+
+model SmtpConfig {
+  id BigInt @id @default(autoincrement())
+  organizationId BigInt
+
+  name String
+  host String
+  port Int
+
+  username String?
+  password String?
+
+  encryption String
+  // CHECK:
+  // Allowed values: none, tls, ssl
+
+  fromEmail String?
+  fromName  String?
+  replyToEmail String?
+
+  isActive Boolean?
+
+  @@index([organizationId])
+  @@map("smtp_config")
+}
+
+////////////////////////////////////////////////////////////
+// AUTH SESSIONS
+////////////////////////////////////////////////////////////
+
+model AuthSessions {
+  id BigInt @id @default(autoincrement())
+  organizationId BigInt
+  userId BigInt
+
+  ipAddress String?
+  userAgent String?
+
+  loginAt  DateTime?
+  logoutAt DateTime?
+
+  @@index([organizationId, userId])
+  @@index([loginAt])
+  @@map("auth_sessions")
+}
+
+////////////////////////////////////////////////////////////
+// AUDIT LOGS
+////////////////////////////////////////////////////////////
+
+model AuditLogs {
+  id BigInt @id @default(autoincrement())
+  organizationId BigInt
+
+  userId BigInt?
+  roleId BigInt?
+
+  action String
+  // CHECK:
+  // Allowed values: create, update, delete
+
+  moduleId BigInt?
+
+  entityType String
+  entityId BigInt
+
+  oldValues Json?
+  newValues Json?
+
+  ipAddress String?
+  userAgent String?
+
+  status String
+  // CHECK:
+  // Allowed values: success, failed
+
+  createdAt DateTime?
+
+  @@index([organizationId, createdAt])
+  @@map("audit_logs")
+}

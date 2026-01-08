@@ -3,3 +3,10 @@ DATABASE_URL="postgresql://RBAC-Guy:Apple%40123@localhost:5432/RBAC"
 This is what is inside .env file of backend since we will ahev to create a psotgres user 
 and stuff for you call me tomrrow i will help setup for you and if neceesary we can chagne 
 to a more simpler password
+
+08/01/2026-
+Created a prisma structure, when we need to a new database or something 
+we can use the sql migrations it creates but the problem is that it cannot 
+add check conditions and stuff so we will ahve to add the checkconditions 
+and stuff into the sql migratiosn every time so we can add a python program
+ later on to automate that part
