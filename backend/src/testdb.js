@@ -1,12 +1,13 @@
 const db = require('./db')
 
 async function test() {
-  const result = await db.one('SELECT 1 as ok')
-  console.log(result)
+  const orgs = await db.any('SELECT id, gstin FROM organizations')
+  const users = await db.any('SELECT id, code FROM roles')
+
+  console.log({ orgs, users })
   process.exit(0)
 }
 
-test().catch(err => {
-  console.error('DB connection failed:', err)
-  process.exit(1)
-})
+test().catch(console.error)
+
+  
