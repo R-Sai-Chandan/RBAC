@@ -10,3 +10,155 @@ we can use the sql migrations it creates but the problem is that it cannot
 add check conditions and stuff so we will ahve to add the checkconditions 
 and stuff into the sql migratiosn every time so we can add a python program
  later on to automate that part
+
+
+11/01/2026-
+Prompt: Generate Knex.js Migration with Centralized Documentation
+
+Input:
+
+knex.js table definition(s) or schema(s), including:
+
+Column names, data types, nullability, defaults
+
+Primary keys, foreign keys, unique constraints
+
+Relationships (including multi-tenant/composite keys)
+
+Any enums or restricted values
+
+Output Requirements:
+
+Migration File Structure (Single File)
+
+Header comment describing the migration and purpose
+
+exports.up with:
+
+Core identifiers section
+
+Metadata/optional columns section
+
+Primary keys
+
+Indexes
+
+Foreign keys (using knex builder or raw SQL for composite keys)
+
+exports.down dropping tables
+
+Schema Compliance
+
+Follow provided schema exactly
+
+Remove all enums, replacing with either:
+
+Reference/lookup tables
+
+CHECK constraints
+
+Foreign keys must be in correct creation order
+
+Documentation at the End Only
+
+Clearly separated sections:
+
+DATABASE-LEVEL CONSTRAINTS AND RULES (ENFORCED HERE)
+
+RULES THAT CANNOT OR SHOULD NOT BE ENFORCED AT THE DATABASE LEVEL
+
+RULES THAT MUST BE ENFORCED IN THE BACKEND / APPLICATION LAYER
+
+DESIGN JUSTIFICATION
+
+Include reasoning for each constraint, index, or default
+
+Explain why some rules are backend-only or not enforceable in SQL
+
+Constraints / Logic Rules
+
+Primary key(s)
+
+Unique constraints
+
+Foreign key references (with ON DELETE / ON UPDATE)
+
+NOT NULL
+
+CHECK constraints (where appropriate)
+
+Composite keys using raw SQL if necessary (for multi-tenant isolation)
+
+Style Requirements
+
+Inline section comments inside exports.up only where meaningful
+
+Avoid inline commentary cluttering table definitions
+
+Keep all explanatory text only at the bottom in a centralized block
+
+Maintain production-grade, readable Knex.js migration style
+
+Output Example Structure:
+
+/**
+ * Migration: create_<table_name>
+ *
+ * Short description of migration purpose.
+ */
+
+exports.up = async function (knex) {
+  // === Core identifiers ===
+  ...
+
+  // === Metadata / optional fields ===
+  ...
+
+  // === Primary Key / Unique Constraints ===
+  ...
+
+  // === Indexes ===
+  ...
+
+  // === Foreign Keys ===
+  ...
+};
+
+exports.down = async function (knex) {
+  await knex.schema.dropTableIfExists('<table_name>');
+};
+
+/**
+ * =====================================================================
+ * DATABASE-LEVEL CONSTRAINTS AND RULES (ENFORCED HERE)
+ * =====================================================================
+ * ...
+ *
+ * =====================================================================
+ * RULES THAT CANNOT OR SHOULD NOT BE ENFORCED AT THE DATABASE LEVEL
+ * =====================================================================
+ * ...
+ *
+ * =====================================================================
+ * RULES THAT MUST BE ENFORCED IN THE BACKEND / APPLICATION LAYER
+ * =====================================================================
+ * ...
+ *
+ * =====================================================================
+ * DESIGN JUSTIFICATION
+ * =====================================================================
+ * ...
+ */
+
+
+Key Notes for the LLM:
+
+Must strictly follow schema
+
+Remove all enums
+
+Use raw SQL for composite foreign keys if needed for multi-tenant isolation
+
+All documentation centralized at bottom
+
+Maintain clear sectioning, readable and maintainable code
