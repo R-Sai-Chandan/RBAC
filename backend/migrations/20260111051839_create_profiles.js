@@ -1,5 +1,5 @@
 exports.up = async function(knex) {
-  await knex.schema.createTable('roles', (table) => {
+  await knex.schema.createTable('profiles', (table) => {
     table.bigIncrements('id').primary();
     table.bigInteger('organization_id').unsigned().notNullable()
       .references('id').inTable('organizations').onDelete('CASCADE');
@@ -8,18 +8,14 @@ exports.up = async function(knex) {
     table.string('code').notNullable();
     table.text('description');
     
-    table.bigInteger('parent_role_id').unsigned();
-    
     table.boolean('is_active').defaultTo(true);
     
     table.timestamp('created_at').defaultTo(knex.fn.now());
     table.bigInteger('created_by').unsigned()
       .references('id').inTable('users').onDelete('SET NULL');
     
-    // Indexes from schema
+    // Index from schema
     table.unique(['organization_id', 'code']);
-    table.index('organization_id');
-    table.index('parent_role_id');
     
     // Performance indexes
     table.index('is_active');
@@ -27,21 +23,9 @@ exports.up = async function(knex) {
     
     // CRITICAL: Composite unique constraint to allow composite FK references
     table.unique(['organization_id', 'id']);
-    
-    // Check constraint: parent cannot be self
-    table.check('?? != ??', ['parent_role_id', 'id']);
   });
-  
-  // Add parent role FK with same organization constraint
-  await knex.raw(`
-    ALTER TABLE roles
-    ADD CONSTRAINT fk_parent_role
-    FOREIGN KEY (parent_role_id, organization_id)
-    REFERENCES roles(id, organization_id)
-    ON DELETE SET NULL
-  `);
 };
 
 exports.down = async function(knex) {
-  await knex.schema.dropTableIfExists('roles');
+  await knex.schema.dropTableIfExists('profiles');
 };
