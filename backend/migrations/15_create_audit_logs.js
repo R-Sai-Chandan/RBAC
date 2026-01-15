@@ -6,7 +6,7 @@
  * enforces action and status validity via CHECK constraints.
  */
 
-exports.up = async function(knex) {
+exports.up = async function (knex) {
   await knex.schema.createTable('audit_logs', (table) => {
     // === Core identifiers ===
     table.bigIncrements('id').primary();
@@ -27,7 +27,7 @@ exports.up = async function(knex) {
     table.bigInteger('entity_id');
 
     // === Change tracking ===
-    table.json('old_values');
+    table.json('old_values').defaultTo(null);
     table.json('new_values');
 
     // === Metadata / optional fields ===
@@ -47,7 +47,7 @@ exports.up = async function(knex) {
   });
 };
 
-exports.down = async function(knex) {
+exports.down = async function (knex) {
   await knex.schema.dropTableIfExists('audit_logs');
 };
 

@@ -1,1 +1,0 @@
-const prismaclient = require(prisma);
