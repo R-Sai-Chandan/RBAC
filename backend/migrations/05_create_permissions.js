@@ -22,11 +22,13 @@ exports.up = async function (knex) {
     table.string('action').notNullable();
     table.check(
       "action IN ('create', 'read', 'update', 'delete', 'export')",
+      [],
       'permissions_action_check'
     );
 
     // === Unique constraints ===
     table.unique(['organization_id', 'module_id', 'action']);
+    table.unique(['organization_id', 'id']); // REQUIRED for composite FK references
   });
 
   // === Foreign key constraints ===

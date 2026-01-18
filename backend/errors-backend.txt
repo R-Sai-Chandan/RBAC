@@ -1,0 +1,17 @@
+src/rbac/repositories/audit_log.repository.ts(17,23): error TS2709: Cannot use namespace 'Pool' as a type.
+src/rbac/repositories/auth_session.repository.ts(17,23): error TS2709: Cannot use namespace 'Pool' as a type.
+src/rbac/repositories/base.repository.ts(5,33): error TS2709: Cannot use namespace 'Pool' as a type.
+src/rbac/repositories/base.repository.ts(7,70): error TS2709: Cannot use namespace 'QueryResult' as a type.
+src/rbac/repositories/group.repository.ts(17,23): error TS2709: Cannot use namespace 'Pool' as a type.
+src/rbac/repositories/module.repository.ts(13,23): error TS2709: Cannot use namespace 'Pool' as a type.
+src/rbac/repositories/permission.repository.ts(16,23): error TS2709: Cannot use namespace 'Pool' as a type.
+src/rbac/repositories/profile.repository.ts(17,23): error TS2709: Cannot use namespace 'Pool' as a type.
+src/rbac/repositories/profile_permission.repository.ts(17,23): error TS2709: Cannot use namespace 'Pool' as a type.
+src/rbac/repositories/record_share.repository.ts(19,23): error TS2709: Cannot use namespace 'Pool' as a type.
+src/rbac/repositories/role.repository.ts(18,23): error TS2709: Cannot use namespace 'Pool' as a type.
+src/rbac/repositories/role_profile.repository.ts(16,23): error TS2709: Cannot use namespace 'Pool' as a type.
+src/rbac/repositories/sharing_rule.repository.ts(18,23): error TS2709: Cannot use namespace 'Pool' as a type.
+src/rbac/repositories/smtp_config.repository.ts(16,23): error TS2709: Cannot use namespace 'Pool' as a type.
+src/rbac/repositories/user.repository.ts(18,23): error TS2709: Cannot use namespace 'Pool' as a type.
+src/rbac/repositories/user_group.repository.ts(22,23): error TS2709: Cannot use namespace 'Pool' as a type.
+src/rbac/repositories/user_role.repository.ts(16,23): error TS2709: Cannot use namespace 'Pool' as a type.

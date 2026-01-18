@@ -30,13 +30,15 @@ exports.up = async function (knex) {
       .references('id')
       .inTable('organizations')
       .onDelete('CASCADE');
-
-    table
-      .foreign('created_by')
-      .references('id')
-      .inTable('users')
-      .onDelete('SET NULL');
   });
+
+  await knex.raw(`
+    ALTER TABLE profiles
+    ADD CONSTRAINT fk_profiles_created_by
+    FOREIGN KEY (organization_id, created_by)
+    REFERENCES users(organization_id, id)
+    ON DELETE SET NULL
+  `);
 
   // === Indexes and unique constraints ===
   await knex.schema.alterTable('profiles', (table) => {

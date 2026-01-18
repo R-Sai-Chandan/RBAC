@@ -1,54 +1,49 @@
-/**
- * SharingRuleRepository
- * 
- * Data access layer for SharingRule entities.
- * All operations scoped to organizationId for multi-tenant isolation.
- */
 
-import { SharingRule, SharingRuleType } from '../models/sharing_rule.model';
+import { Pool } from 'pg';
+import { BaseRepository } from './base.repository';
+import { SharingRule } from '../models/sharing_rule.model';
 
 export interface ISharingRuleRepository {
-    /**
-     * Find sharing rule by ID within organization
-     * @throws SharingRuleNotFoundError
-     */
-    findById(organizationId: string, ruleId: string): Promise<SharingRule | null>;
-
-    /**
-     * List all sharing rules in organization
-     */
+    create(organizationId: string, data: any): Promise<SharingRule>;
+    update(organizationId: string, id: string, data: any): Promise<SharingRule>;
+    delete(organizationId: string, id: string): Promise<void>;
+    findById(organizationId: string, id: string): Promise<SharingRule | null>;
     findAllByOrganization(organizationId: string): Promise<SharingRule[]>;
-
-    /**
-     * List all active sharing rules in organization
-     */
     findActiveByOrganization(organizationId: string): Promise<SharingRule[]>;
-
-    /**
-     * Find sharing rules by type
-     */
-    findByType(organizationId: string, ruleType: SharingRuleType): Promise<SharingRule[]>;
-
-    /**
-     * Find sharing rules for a module
-     */
+    findByType(organizationId: string, type: string): Promise<SharingRule[]>;
     findByModule(organizationId: string, moduleId: string): Promise<SharingRule[]>;
+}
 
-    /**
-     * Create a new sharing rule
-     * @throws SharingRuleCreationError
-     */
-    create(organizationId: string, data: Omit<SharingRule, 'id' | 'organization_id' | 'created_at'>): Promise<SharingRule>;
+export class SharingRuleRepository extends BaseRepository<SharingRule> implements ISharingRuleRepository {
+    constructor(pool: Pool) {
+        super(pool, 'sharing_rules');
+    }
 
-    /**
-     * Update sharing rule
-     * @throws SharingRuleNotFoundError
-     */
-    update(organizationId: string, ruleId: string, data: Partial<SharingRule>): Promise<SharingRule>;
+    async findAllByOrganization(organizationId: string): Promise<SharingRule[]> {
+        return this.findAll(organizationId);
+    }
 
-    /**
-     * Delete sharing rule (cascade handled by DB)
-     * @throws SharingRuleNotFoundError
-     */
-    delete(organizationId: string, ruleId: string): Promise<void>;
+    async findActiveByOrganization(organizationId: string): Promise<SharingRule[]> {
+        const res = await this.query(
+            `SELECT * FROM ${this.tableName} WHERE is_active = true AND organization_id = $1 AND deleted_at IS NULL`,
+            [organizationId]
+        );
+        return res.rows;
+    }
+
+    async findByType(organizationId: string, type: string): Promise<SharingRule[]> {
+        const res = await this.query(
+            `SELECT * FROM ${this.tableName} WHERE rule_type = $1 AND organization_id = $2 AND deleted_at IS NULL`,
+            [type, organizationId]
+        );
+        return res.rows;
+    }
+
+    async findByModule(organizationId: string, moduleId: string): Promise<SharingRule[]> {
+        const res = await this.query(
+            `SELECT * FROM ${this.tableName} WHERE module_id = $1 AND organization_id = $2 AND deleted_at IS NULL`,
+            [moduleId, organizationId]
+        );
+        return res.rows;
+    }
 }

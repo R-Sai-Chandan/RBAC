@@ -1,51 +1,40 @@
-/**
- * ProfileRepository
- * 
- * Data access layer for Profile entities.
- * All operations scoped to organizationId for multi-tenant isolation.
- */
 
+import { Pool } from 'pg';
+import { BaseRepository } from './base.repository';
 import { Profile } from '../models/profile.model';
 
 export interface IProfileRepository {
-    /**
-     * Find profile by ID within organization
-     * @throws ProfileNotFoundError
-     */
-    findById(organizationId: string, profileId: string): Promise<Profile | null>;
-
-    /**
-     * Find profile by code within organization
-     * @throws ProfileNotFoundError
-     */
+    create(organizationId: string, data: any): Promise<Profile>;
+    update(organizationId: string, id: string, data: any): Promise<Profile>;
+    delete(organizationId: string, id: string): Promise<void>;
+    findById(organizationId: string, id: string): Promise<Profile | null>;
     findByCode(organizationId: string, code: string): Promise<Profile | null>;
-
-    /**
-     * List all profiles in organization
-     */
     findAllByOrganization(organizationId: string): Promise<Profile[]>;
-
-    /**
-     * List all active profiles in organization
-     */
     findActiveByOrganization(organizationId: string): Promise<Profile[]>;
+}
 
-    /**
-     * Create a new profile
-     * @throws ProfileCreationError
-     * @throws DuplicateProfileCodeError
-     */
-    create(organizationId: string, data: Omit<Profile, 'id' | 'organization_id' | 'created_at'>): Promise<Profile>;
+export class ProfileRepository extends BaseRepository<Profile> implements IProfileRepository {
+    constructor(pool: Pool) {
+        super(pool, 'profiles');
+    }
 
-    /**
-     * Update profile
-     * @throws ProfileNotFoundError
-     */
-    update(organizationId: string, profileId: string, data: Partial<Profile>): Promise<Profile>;
+    async findByCode(organizationId: string, code: string): Promise<Profile | null> {
+        const res = await this.query(
+            `SELECT * FROM ${this.tableName} WHERE code = $1 AND organization_id = $2 AND deleted_at IS NULL`,
+            [code, organizationId]
+        );
+        return res.rows[0] || null;
+    }
 
-    /**
-     * Delete profile (cascade handled by DB)
-     * @throws ProfileNotFoundError
-     */
-    delete(organizationId: string, profileId: string): Promise<void>;
+    async findAllByOrganization(organizationId: string): Promise<Profile[]> {
+        return this.findAll(organizationId);
+    }
+
+    async findActiveByOrganization(organizationId: string): Promise<Profile[]> {
+        const res = await this.query(
+            `SELECT * FROM ${this.tableName} WHERE is_active = true AND organization_id = $1 AND deleted_at IS NULL`,
+            [organizationId]
+        );
+        return res.rows;
+    }
 }

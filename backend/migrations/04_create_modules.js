@@ -22,7 +22,8 @@ exports.up = async function (knex) {
     table.integer('sort_order').nullable();
 
     // === Unique constraints ===
-    table.unique(['organization_id', 'code']);
+    table.unique(['organization_id', 'code']); // unique code per organization
+    table.unique(['organization_id', 'id']); // REQUIRED for composite FK references
   });
 
   // === Foreign key constraints ===

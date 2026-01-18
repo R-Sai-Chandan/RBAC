@@ -21,19 +21,25 @@ export function createAuthSessionsRouter(
     // PUBLIC: Login
     router.post('/login', async (req: Request, res: Response) => {
         try {
-            const { organizationId, username, password } = req.body;
+            // Accept 'identifier' (username or email) OR legacy 'username' field
+            const { organizationId, identifier, username, password } = req.body;
+            const loginIdentifier = identifier || username;
 
             // 1. Basic Validation
-            if (!organizationId || !username || !password) {
+            if (!organizationId || !loginIdentifier || !password) {
                 res.status(400).json({
                     error: 'Bad Request',
-                    message: 'Missing credentials. Required: organizationId, username, password'
+                    message: 'Missing credentials. Required: organizationId, identifier/username, password'
                 });
                 return;
             }
 
-            // 2. Find User
-            const user = await userRepository.findByUsername(organizationId, username);
+            // 2. Find User by username or email
+            let user = await userRepository.findByUsername(organizationId, loginIdentifier);
+            if (!user) {
+                // Try by email
+                user = await userRepository.findByEmail(organizationId, loginIdentifier);
+            }
             if (!user) {
                 // Fail generic (prevent enumeration)
                 res.status(401).json({ error: 'Unauthorized', message: 'Invalid credentials' });
@@ -67,11 +73,20 @@ export function createAuthSessionsRouter(
                 ...(userAgent ? { user_agent: userAgent } : {})
             });
 
-            // 6. Return Session ID
+            // 6. Set HTTP-Only Cookie (Transport Migration)
+            const isProd = process.env.NODE_ENV === 'production';
+            res.cookie('sessionId', session.id, {
+                httpOnly: true,
+                secure: isProd, // True in prod
+                sameSite: 'strict',
+                path: '/rbac',
+                maxAge: 24 * 60 * 60 * 1000 // 24 hours (Match session TTL)
+            });
+
+            // 7. Return User Context (No Session ID in Body)
             const fullName = `${user.first_name || ''} ${user.last_name}`.trim();
             res.status(201).json({
                 data: {
-                    sessionId: session.id,
                     user: {
                         id: user.id,
                         username: user.username,
@@ -99,6 +114,10 @@ export function createAuthSessionsRouter(
             }
 
             await authSessionService.logout(req.user.organizationId, req.user.sessionId);
+
+            // Clear Cookie
+            res.clearCookie('sessionId', { path: '/rbac' });
+
             res.status(200).json({ message: 'Logged out successfully' });
 
         } catch (error) {

@@ -18,6 +18,7 @@ exports.up = async function (knex) {
     table.string('effect').notNullable();
     table.check(
       "effect IN ('allow', 'deny')",
+      [],
       'profile_permissions_effect_check'
     );
   });

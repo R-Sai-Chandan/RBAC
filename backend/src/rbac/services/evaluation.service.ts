@@ -15,32 +15,24 @@
 import { PermissionDecision, createDenyDecision, createAllowDecision } from '../types/permission-decision';
 import { IUserRepository } from '../repositories/user.repository';
 import { IModuleRepository } from '../repositories/module.repository';
+import { IUserRoleRepository } from '../repositories/user_role.repository';
+import { IRoleProfileRepository } from '../repositories/role_profile.repository';
+import { IProfilePermissionRepository } from '../repositories/profile_permission.repository';
+import { IPermissionRepository } from '../repositories/permission.repository';
 import {
     PermissionDeniedError,
     TenantMismatchError,
     InvalidModuleActionError,
     RBACInternalError,
-    UserNotFoundError,
-    ModuleNotFoundError
+    RBACError
 } from '../errors/rbac.errors';
+import { ProfilePermissionEffect } from '../models/profile_permission.model';
+import { PermissionAction } from '../models/permission.model';
 
 export interface IEvaluationService {
     /**
      * Evaluate if user has permission for module/action
-     * 
-     * CRITICAL: This is the single authoritative permission check.
-     * 
-     * Algorithm:
-     * 1. Validate inputs (organizationId, userId, moduleCode, action)
-     * 2. Query: User -> Roles -> Profiles -> Permissions
-     * 3. Collect all effects (allow/deny)
-     * 4. If ANY deny exists: DENY
-     * 5. If NO deny AND at least one allow: ALLOW
-     * 6. Otherwise: DENY (fail-closed)
-     * 
-     * @throws TenantMismatchError if user not in organization
-     * @throws InvalidModuleActionError if module/action invalid
-     * @throws RBACInternalError on system failure
+     * @see EvaluationService.evaluate
      */
     evaluate(
         organizationId: string,
@@ -50,10 +42,7 @@ export interface IEvaluationService {
     ): Promise<PermissionDecision>;
 
     /**
-     * Batch evaluate multiple permissions for same user
-     * 
-     * More efficient than multiple evaluate() calls.
-     * Returns decisions in same order as requests.
+     * Batch evaluate multiple permissions
      */
     evaluateBatch(
         organizationId: string,
@@ -63,14 +52,6 @@ export interface IEvaluationService {
 
     /**
      * Check if user has permission (throws on denial)
-     * 
-     * Convenience wrapper around evaluate() that throws PermissionDeniedError.
-     * Use this in middleware/guards.
-     * 
-     * @throws PermissionDeniedError if access denied
-     * @throws TenantMismatchError if user not in organization
-     * @throws InvalidModuleActionError if module/action invalid
-     * @throws RBACInternalError on system failure
      */
     enforcePermission(
         organizationId: string,
@@ -88,8 +69,11 @@ export interface IEvaluationService {
 export class EvaluationService implements IEvaluationService {
     constructor(
         private readonly userRepository: IUserRepository,
-        private readonly moduleRepository: IModuleRepository
-        // TODO: Add repositories for roles, profiles, permissions when implementing full evaluation
+        private readonly moduleRepository: IModuleRepository,
+        private readonly userRoleRepository: IUserRoleRepository,
+        private readonly roleProfileRepository: IRoleProfileRepository,
+        private readonly profilePermissionRepository: IProfilePermissionRepository,
+        private readonly permissionRepository: IPermissionRepository
     ) { }
 
     async evaluate(
@@ -99,58 +83,103 @@ export class EvaluationService implements IEvaluationService {
         action: string
     ): Promise<PermissionDecision> {
         try {
-            // FAIL-CLOSED: Validate user exists and belongs to organization
+            // 1. Validate Context & Inputs
             const user = await this.userRepository.findById(organizationId, userId);
             if (!user) {
-                return createDenyDecision(
-                    userId,
-                    organizationId,
-                    moduleCode,
-                    action,
-                    'User not found'
-                );
+                return createDenyDecision(userId, organizationId, moduleCode, action, 'User not found');
             }
-
-            // FAIL-CLOSED: Validate user belongs to organization
             if (user.organization_id !== organizationId) {
                 throw new TenantMismatchError(organizationId, user.organization_id, `user ${userId}`);
             }
 
-            // FAIL-CLOSED: Validate module exists
+            // 2. Validate Module
             const module = await this.moduleRepository.findByCode(organizationId, moduleCode);
             if (!module) {
                 throw new InvalidModuleActionError(moduleCode, action);
             }
 
-            // TODO_IMPLEMENTATION: Query User -> Roles -> Profiles -> Permissions
-            // This requires joining:
-            // 1. user_roles to get user's roles
-            // 2. role_profiles to get profiles for those roles
-            // 3. profile_permissions to get permissions for those profiles
-            // 4. permissions to get actual permission details
-            // 5. Filter by moduleCode and action
-            // 6. Collect all effects (allow/deny)
-
-            // TODO_TEST: Verify permission evaluation logic
-            // For now, FAIL-CLOSED: deny by default
-            return createDenyDecision(
-                userId,
-                organizationId,
-                moduleCode,
-                action,
-                'Permission evaluation not yet implemented'
-            );
-
-        } catch (error) {
-            // Re-throw known errors
-            if (
-                error instanceof TenantMismatchError ||
-                error instanceof InvalidModuleActionError
-            ) {
-                throw error;
+            // 3. Resolve Roles
+            const userRoles = await this.userRoleRepository.findRolesByUser(organizationId, userId);
+            if (userRoles.length === 0) {
+                return createDenyDecision(userId, organizationId, moduleCode, action, 'User has no roles');
             }
 
-            // FAIL-CLOSED: Unknown error = deny
+            // 4. Resolve Profiles through Roles
+            const profileIds = new Set<string>();
+            for (const userRole of userRoles) {
+                const roleProfiles = await this.roleProfileRepository.findProfilesByRole(organizationId, userRole.role_id);
+                roleProfiles.forEach(rp => profileIds.add(rp.profile_id));
+            }
+
+            if (profileIds.size === 0) {
+                return createDenyDecision(userId, organizationId, moduleCode, action, 'User roles have no profiles');
+            }
+
+            // 5. Resolve Permissions matching Module/Action
+            // Strategy:
+            // - Find the Permission definition for "Module + Action"
+            // - Use that PermissionID to find if it's assigned to any of the user's Profiles
+            // - Check Effects (Deny vs Allow)
+
+            // 5a. Find Target Permission Definition
+            const targetPermission = await this.permissionRepository.findByModuleAndAction(
+                organizationId,
+                module.id,
+                action as PermissionAction // Assertion assuming action string is valid PermissionAction
+            );
+
+            if (!targetPermission) {
+                // If permission definition doesn't exist in DB, nobody can have it.
+                // Fail safe: DENY
+                return createDenyDecision(userId, organizationId, moduleCode, action, 'Permission definition not found');
+            }
+
+            // 5b. Check Assignments across all Profiles
+            let explicitAllow = false;
+            let explicitDeny = false;
+
+            for (const profileId of profileIds) {
+                const assignment = await this.profilePermissionRepository.findAssignment(
+                    organizationId,
+                    profileId,
+                    targetPermission.id
+                );
+
+                if (assignment) {
+                    if (assignment.effect === ProfilePermissionEffect.DENY) {
+                        explicitDeny = true;
+                        // Optimization: Fail fast on first DENY?
+                        // "Deny-override: Any DENY = DENY".
+                        // Yes, we can break early if we find a DENY.
+                        break;
+                    }
+                    if (assignment.effect === ProfilePermissionEffect.ALLOW) {
+                        explicitAllow = true;
+                    }
+                }
+            }
+
+            // 6. Make Decision
+            if (explicitDeny) {
+                return createDenyDecision(userId, organizationId, moduleCode, action, 'Explicit DENY in profile');
+            }
+
+            if (explicitAllow) {
+                return createAllowDecision(userId, organizationId, moduleCode, action, 'Explicit allow found');
+            }
+
+            // Default: DENY
+            return createDenyDecision(userId, organizationId, moduleCode, action, 'No matching ALLOW permission');
+
+        } catch (error) {
+            // Re-throw specific domain errors
+            if (error instanceof RBACError) {
+                if (error instanceof RBACInternalError) throw error;
+                if (error instanceof TenantMismatchError) throw error;
+                if (error instanceof InvalidModuleActionError) throw error;
+                // For other RBAC errors, treat as system failure or fall through to closed
+            }
+
             console.error('Permission evaluation failed:', error);
             throw new RBACInternalError('Permission evaluation failed', error as Error);
         }
@@ -161,11 +190,17 @@ export class EvaluationService implements IEvaluationService {
         userId: string,
         requests: Array<{ moduleCode: string; action: string }>
     ): Promise<PermissionDecision[]> {
-        // TODO_IMPLEMENTATION: Optimize with single query
-        // For now, evaluate individually
+        // TODO: Optimize with batch queries if performance becomes an issue
         const decisions: PermissionDecision[] = [];
         for (const req of requests) {
-            decisions.push(await this.evaluate(organizationId, userId, req.moduleCode, req.action));
+            try {
+                decisions.push(await this.evaluate(organizationId, userId, req.moduleCode, req.action));
+            } catch (error) {
+                // For batch, we probably want to return individual failures as Denials rather than blowing up the whole batch?
+                // Or throw strictly? 
+                // Decision: Fail closed for individual item.
+                decisions.push(createDenyDecision(userId, organizationId, req.moduleCode, req.action, 'Evaluation Error'));
+            }
         }
         return decisions;
     }
@@ -179,6 +214,13 @@ export class EvaluationService implements IEvaluationService {
         const decision = await this.evaluate(organizationId, userId, moduleCode, action);
 
         if (!decision.granted) {
+            // AUDIT: Log denial (Non-blocking)
+            // In production, call this.auditService.log(...)
+            // Requirement: "Ensure audit logging never blocks the request"
+            // We use setTimeout or fire-and-forget promise if we had a service.
+            // Here we strictly log to stdout for audit capture.
+            console.log(`[AUDIT_DENIAL] User: ${userId}, Org: ${organizationId}, Module: ${moduleCode}, Action: ${action}, Reason: ${decision.reason}`);
+
             throw new PermissionDeniedError(
                 userId,
                 organizationId,

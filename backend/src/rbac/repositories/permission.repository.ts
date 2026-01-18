@@ -1,51 +1,31 @@
-/**
- * PermissionRepository
- * 
- * Data access layer for Permission entities.
- * All operations scoped to organizationId for multi-tenant isolation.
- */
 
+import { Pool } from 'pg';
+import { BaseRepository } from './base.repository';
 import { Permission, PermissionAction } from '../models/permission.model';
 
 export interface IPermissionRepository {
-    /**
-     * Find permission by ID within organization
-     * @throws PermissionNotFoundError
-     */
-    findById(organizationId: string, permissionId: string): Promise<Permission | null>;
-
-    /**
-     * Find permission by module and action
-     * @throws PermissionNotFoundError
-     */
-    findByModuleAndAction(organizationId: string, moduleId: string, action: PermissionAction): Promise<Permission | null>;
-
-    /**
-     * List all permissions for a module
-     */
-    findByModule(organizationId: string, moduleId: string): Promise<Permission[]>;
-
-    /**
-     * List all permissions in organization
-     */
     findAllByOrganization(organizationId: string): Promise<Permission[]>;
+    create(organizationId: string, data: any): Promise<Permission>;
+    update(organizationId: string, id: string, data: any): Promise<Permission>;
+    delete(organizationId: string, id: string): Promise<void>;
+    findById(organizationId: string, id: string): Promise<Permission | null>;
+    findByModuleAndAction(organizationId: string, moduleId: string, action: PermissionAction): Promise<Permission | null>;
+}
 
-    /**
-     * Create a new permission
-     * @throws PermissionCreationError
-     * @throws DuplicatePermissionError
-     */
-    create(organizationId: string, data: Omit<Permission, 'id' | 'organization_id'>): Promise<Permission>;
+export class PermissionRepository extends BaseRepository<Permission> implements IPermissionRepository {
+    constructor(pool: Pool) {
+        super(pool, 'permissions');
+    }
 
-    /**
-     * Update permission
-     * @throws PermissionNotFoundError
-     */
-    update(organizationId: string, permissionId: string, data: Partial<Permission>): Promise<Permission>;
+    async findAllByOrganization(organizationId: string): Promise<Permission[]> {
+        return this.findAll(organizationId);
+    }
 
-    /**
-     * Delete permission (cascade handled by DB)
-     * @throws PermissionNotFoundError
-     */
-    delete(organizationId: string, permissionId: string): Promise<void>;
+    async findByModuleAndAction(organizationId: string, moduleId: string, action: PermissionAction): Promise<Permission | null> {
+        const res = await this.query(
+            `SELECT * FROM ${this.tableName} WHERE module_id = $1 AND action = $2 AND organization_id = $3 AND deleted_at IS NULL`,
+            [moduleId, action, organizationId]
+        );
+        return res.rows[0] || null;
+    }
 }

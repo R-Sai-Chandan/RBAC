@@ -8,6 +8,7 @@
  * - Fail closed if no session ID provided
  * - Fail closed if session invalid/expired
  * - Fail closed if session not found
+ * - Fail closed if Tenant Mismatch
  */
 
 import { Response, NextFunction } from 'express';
@@ -20,44 +21,18 @@ import { RBACRequest } from './requirePermission.middleware';
 export function createAuthenticateMiddleware(authSessionService: IAuthSessionService) {
     return async (req: RBACRequest, res: Response, next: NextFunction) => {
         try {
-            // 1. Extract Session ID (Bearer Token or X-Session-ID)
-            let sessionId = req.headers['x-session-id'] as string;
-
-            // Fallback to Bearer token
-            if (!sessionId) {
-                const authHeader = req.headers.authorization;
-                if (authHeader && authHeader.startsWith('Bearer ')) {
-                    sessionId = authHeader.substring(7);
-                }
-            }
+            // 1. Strict Session ID Extraction using HTTP-Only Cookie
+            // Migration: Header -> Cookie
+            // Ensure cookies exist (cookie-parser required)
+            const sessionId = req.cookies ? req.cookies['sessionId'] : undefined;
 
             if (!sessionId) {
                 // FAIL-CLOSED
-                res.status(401).json({ error: 'Unauthorized', message: 'Authentication required' });
+                res.status(401).json({ error: 'Unauthorized', message: 'Authentication required (Cookie missing)' });
                 return;
             }
 
-            // 2. Validate Session
-            // We need organizationId to validate. 
-            // PROBLEM: Session ID is unique PK? If so, we can find it without OrgID?
-            // Repository says `findById(organizationId, sessionId)`.
-            // This implies we need OrgID to find session. 
-            // BUT: Middleware runs *before* we trust client to provide OrgID.
-            // If repository requires OrgId, this design implies strict multi-tenancy where we must know context first.
-            // Client usually sends X-Organization-ID header?
-            // OR: Session IDs are globally unique UUIDs, and repo method is scoped for check.
-
-            // HACK/ASSUMPTION: We expect X-Organization-ID header for context?
-            // OR: We try to parse the session?
-
-            // Let's assume standard RBAC pattern: Client MAY send Organization Context.
-            // BUT for security, the Session itself DEFINES the Organization.
-            // If repository *requires* OrgId to find session, we have a chicken-egg problem if we don't trust client header.
-            // However, `AuthSessionService.getById` calls repo with OrgID.
-
-            // PROPOSAL: Client MUST provide `X-Organization-ID` matching the session's Org.
-            // Middleware verifies they match.
-
+            // 2. Organization Context
             const organizationId = req.headers['x-organization-id'] as string;
             if (!organizationId) {
                 res.status(400).json({ error: 'Bad Request', message: 'X-Organization-ID header required' });
@@ -71,14 +46,25 @@ export function createAuthenticateMiddleware(authSessionService: IAuthSessionSer
                 return;
             }
 
-            // 4. Get Session Details to hydrate Context
+            // 4. Get Session Details
             const session = await authSessionService.getById(organizationId, sessionId);
 
-            // 5. Attach User Context
+            // 5. Strict Tenant Isolation Check
+            // Hardening: "Fail with 403 TENANT_MISMATCH on org mismatch"
+            if (session.organization_id !== organizationId) {
+                res.status(403).json({
+                    error: 'Forbidden',
+                    message: 'Tenant mismatch',
+                    code: 'TENANT_MISMATCH'
+                });
+                return;
+            }
+
+            // 6. Attach User Context
             req.user = {
                 id: session.user_id,
                 organizationId: session.organization_id,
-                sessionId: session.id // Attach session ID for Logout/Audit usage
+                sessionId: session.id
             };
 
             next();

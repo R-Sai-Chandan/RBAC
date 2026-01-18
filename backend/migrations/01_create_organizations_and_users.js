@@ -37,8 +37,8 @@ exports.up = async function (knex) {
 
     table.index('company_name');
   });
-  
-   // ================================
+
+  // ================================
   // USERS TABLE
   // ================================
   await knex.schema.createTable('users', (table) => {
@@ -133,26 +133,39 @@ exports.up = async function (knex) {
   });
 
   // ================================
-  // SELF-REFERENCING FK (users)
+  // SELF-REFERENCING FK (users) & CIRCULAR FK
   // ================================
-  await knex.schema.alterTable('users', (table) => {
-    table
-      .foreign('reports_to_user_id')
-      .references('id')
-      .inTable('users')
-      .onDelete('SET NULL');
-  });
+  // We use knex.raw to ensure composite keys are verified correcty for multi-tenancy
+  await knex.raw(`
+    -- reports_to must be in SAME organization
+    ALTER TABLE users
+    ADD CONSTRAINT fk_users_reports_to
+    FOREIGN KEY (organization_id, reports_to_user_id)
+    REFERENCES users(organization_id, id)
+    ON DELETE SET NULL;
 
-  // ================================
-  // CIRCULAR FK (organizations → users)
-  // ================================
-  await knex.schema.alterTable('organizations', (table) => {
-    table
-      .foreign('created_by')
-      .references('id')
-      .inTable('users')
-      .onDelete('SET NULL');
-  });
+    -- created_by for users must be in SAME organization
+    ALTER TABLE users
+    ADD CONSTRAINT fk_users_created_by
+    FOREIGN KEY (organization_id, created_by)
+    REFERENCES users(organization_id, id)
+    ON DELETE SET NULL;
+
+    -- updated_by for users must be in SAME organization
+    ALTER TABLE users
+    ADD CONSTRAINT fk_users_updated_by
+    FOREIGN KEY (organization_id, updated_by)
+    REFERENCES users(organization_id, id)
+    ON DELETE SET NULL;
+
+    -- Organization created_by cannot be composite (no org_id in organizations table)
+    -- So we keep strict reference to users(id)
+    ALTER TABLE organizations
+    ADD CONSTRAINT fk_organizations_created_by
+    FOREIGN KEY (created_by)
+    REFERENCES users(id)
+    ON DELETE SET NULL;
+  `);
 };
 
 exports.down = async function (knex) {

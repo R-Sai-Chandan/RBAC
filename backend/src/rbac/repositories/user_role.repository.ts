@@ -1,43 +1,68 @@
-/**
- * UserRoleRepository
- * 
- * Data access layer for UserRole assignments.
- * All operations scoped to organizationId for multi-tenant isolation.
- */
 
+import { Pool } from 'pg';
+import { BaseRepository } from './base.repository';
 import { UserRole } from '../models/user_role.model';
 
 export interface IUserRoleRepository {
-    /**
-     * Find all roles assigned to a user
-     */
     findRolesByUser(organizationId: string, userId: string): Promise<UserRole[]>;
-
-    /**
-     * Find all users assigned to a role
-     */
     findUsersByRole(organizationId: string, roleId: string): Promise<UserRole[]>;
-
-    /**
-     * Check if user has specific role
-     */
     hasRole(organizationId: string, userId: string, roleId: string): Promise<boolean>;
-
-    /**
-     * Assign role to user
-     * @throws UserRoleAssignmentError
-     * @throws DuplicateAssignmentError
-     */
     assign(organizationId: string, userId: string, roleId: string, assignedBy?: string): Promise<UserRole>;
-
-    /**
-     * Revoke role from user
-     * @throws UserRoleNotFoundError
-     */
     revoke(organizationId: string, userId: string, roleId: string): Promise<void>;
-
-    /**
-     * Revoke all roles from user
-     */
     revokeAllByUser(organizationId: string, userId: string): Promise<void>;
+}
+
+export class UserRoleRepository extends BaseRepository<UserRole> implements IUserRoleRepository {
+    constructor(pool: Pool) {
+        super(pool, 'user_roles');
+    }
+
+    async findRolesByUser(organizationId: string, userId: string): Promise<UserRole[]> {
+        const res = await this.query(
+            `SELECT * FROM ${this.tableName} WHERE user_id = $1 AND organization_id = $2 AND deleted_at IS NULL`,
+            [userId, organizationId]
+        );
+        return res.rows;
+    }
+
+    async findUsersByRole(organizationId: string, roleId: string): Promise<UserRole[]> {
+        const res = await this.query(
+            `SELECT * FROM ${this.tableName} WHERE role_id = $1 AND organization_id = $2 AND deleted_at IS NULL`,
+            [roleId, organizationId]
+        );
+        return res.rows;
+    }
+
+    async hasRole(organizationId: string, userId: string, roleId: string): Promise<boolean> {
+        const res = await this.query(
+            `SELECT 1 FROM ${this.tableName} WHERE user_id = $1 AND role_id = $2 AND organization_id = $3 AND deleted_at IS NULL`,
+            [userId, roleId, organizationId]
+        );
+        return (res.rowCount || 0) > 0;
+    }
+
+    async assign(organizationId: string, userId: string, roleId: string, assignedBy?: string): Promise<UserRole> {
+        // Upsert or Insert
+        const query = `
+            INSERT INTO ${this.tableName} (organization_id, user_id, role_id, assigned_by)
+            VALUES ($1, $2, $3, $4)
+            RETURNING *
+        `;
+        const res = await this.query(query, [organizationId, userId, roleId, assignedBy]);
+        return res.rows[0];
+    }
+
+    async revoke(organizationId: string, userId: string, roleId: string): Promise<void> {
+        await this.query(
+            `UPDATE ${this.tableName} SET deleted_at = NOW() WHERE user_id = $1 AND role_id = $2 AND organization_id = $3`,
+            [userId, roleId, organizationId]
+        );
+    }
+
+    async revokeAllByUser(organizationId: string, userId: string): Promise<void> {
+        await this.query(
+            `UPDATE ${this.tableName} SET deleted_at = NOW() WHERE user_id = $1 AND organization_id = $2`,
+            [userId, organizationId]
+        );
+    }
 }

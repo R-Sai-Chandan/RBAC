@@ -2,27 +2,34 @@
  * SMTP Config Routes
  * 
  * HTTP endpoints for SMTP configuration management.
- * Delegates to SmtpConfigService for all business logic.
+ * Authorization: SETTINGS:manage_smtp permission required.
  */
 
 import { Router, Request, Response } from 'express';
 import { ISmtpConfigService } from '../services/smtpConfig.service';
-import { RBACInternalError } from '../errors/rbac.errors';
+import { IEvaluationService } from '../services/evaluation.service';
+import { IAuditService } from '../services/audit.service';
+import { requirePermission } from '../middleware/requirePermission.middleware';
 import { getRequiredParam } from './_paramUtils';
 
-export function createSmtpConfigRouter(smtpConfigService: ISmtpConfigService): Router {
+export function createSmtpConfigRouter(
+    smtpConfigService: ISmtpConfigService,
+    evaluationService: IEvaluationService,
+    auditService: IAuditService
+): Router {
     const router = Router();
 
-    // GET /smtp-config - List all SMTP configs
-    router.get('/', async (req: Request, res: Response) => {
+    // SETTINGS:manage_smtp permission for all SMTP config routes
+    const check = () => requirePermission('SETTINGS', 'manage_smtp', evaluationService, auditService);
+
+    // GET /smtp-config
+    router.get('/', check(), async (req: Request, res: Response) => {
         try {
-            const organizationId = req.user?.organizationId;
-            if (!organizationId) {
-                res.status(401).json({ error: 'Unauthorized', message: 'Missing organization context' });
+            if (!req.user || !req.user.organizationId) {
+                res.status(401).json({ error: 'Unauthorized' });
                 return;
             }
-
-            const configs = await smtpConfigService.listAll(organizationId);
+            const configs = await smtpConfigService.listAll(req.user.organizationId);
             res.json({ data: configs });
         } catch (error) {
             console.error('Error listing SMTP configs:', error);
@@ -30,62 +37,49 @@ export function createSmtpConfigRouter(smtpConfigService: ISmtpConfigService): R
         }
     });
 
-    // GET /smtp-config/active - Get active SMTP config
-    router.get('/active', async (req: Request, res: Response) => {
+    // GET /smtp-config/active
+    router.get('/active', check(), async (req: Request, res: Response) => {
         try {
-            const organizationId = req.user?.organizationId;
-            if (!organizationId) {
-                res.status(401).json({ error: 'Unauthorized', message: 'Missing organization context' });
+            if (!req.user || !req.user.organizationId) {
+                res.status(401).json({ error: 'Unauthorized' });
                 return;
             }
-
-            const config = await smtpConfigService.getActive(organizationId);
+            const config = await smtpConfigService.getActive(req.user.organizationId);
+            if (!config) {
+                res.status(404).json({ error: 'Not Found', message: 'No active SMTP config' });
+                return;
+            }
             res.json({ data: config });
         } catch (error) {
-            if (error instanceof RBACInternalError) {
-                res.status(404).json({ error: 'Not Found', message: error.message });
-                return;
-            }
-            console.error('Error getting active SMTP config:', error);
+            console.error('Error fetching active SMTP config:', error);
             res.status(500).json({ error: 'Internal Server Error' });
         }
     });
 
-    // GET /smtp-config/:id - Get SMTP config by ID
-    router.get('/:id', async (req: Request, res: Response) => {
+    // GET /smtp-config/:id
+    router.get('/:id', check(), async (req: Request, res: Response) => {
         try {
-            const organizationId = req.user?.organizationId;
-            if (!organizationId) {
-                res.status(401).json({ error: 'Unauthorized', message: 'Missing organization context' });
+            if (!req.user || !req.user.organizationId) {
+                res.status(401).json({ error: 'Unauthorized' });
                 return;
             }
-
-            // PARAM SAFETY: Strict normalization
             const id = getRequiredParam(req.params, 'id');
-
-            const config = await smtpConfigService.getById(organizationId, id);
+            const config = await smtpConfigService.getById(req.user.organizationId, id);
             res.json({ data: config });
         } catch (error) {
-            if (error instanceof RBACInternalError) {
-                res.status(404).json({ error: 'Not Found', message: error.message });
-                return;
-            }
-            console.error('Error getting SMTP config:', error);
+            console.error('Error fetching SMTP config:', error);
             res.status(500).json({ error: 'Internal Server Error' });
         }
     });
 
-    // POST /smtp-config - Create new SMTP config
-    router.post('/', async (req: Request, res: Response) => {
+    // POST /smtp-config
+    router.post('/', check(), async (req: Request, res: Response) => {
         try {
-            const organizationId = req.user?.organizationId;
-            const actingUserId = req.user?.id;
-            if (!organizationId || !actingUserId) {
-                res.status(401).json({ error: 'Unauthorized', message: 'Missing user context' });
+            if (!req.user || !req.user.organizationId || !req.user.id) {
+                res.status(401).json({ error: 'Unauthorized' });
                 return;
             }
-
-            const config = await smtpConfigService.create(organizationId, req.body, actingUserId);
+            const config = await smtpConfigService.create(req.user.organizationId, req.body, req.user.id);
             res.status(201).json({ data: config });
         } catch (error) {
             console.error('Error creating SMTP config:', error);
@@ -93,20 +87,15 @@ export function createSmtpConfigRouter(smtpConfigService: ISmtpConfigService): R
         }
     });
 
-    // PATCH /smtp-config/:id - Update SMTP config
-    router.patch('/:id', async (req: Request, res: Response) => {
+    // PATCH /smtp-config/:id
+    router.patch('/:id', check(), async (req: Request, res: Response) => {
         try {
-            const organizationId = req.user?.organizationId;
-            const actingUserId = req.user?.id;
-            if (!organizationId || !actingUserId) {
-                res.status(401).json({ error: 'Unauthorized', message: 'Missing user context' });
+            if (!req.user || !req.user.organizationId || !req.user.id) {
+                res.status(401).json({ error: 'Unauthorized' });
                 return;
             }
-
-            // PARAM SAFETY: Strict normalization
             const id = getRequiredParam(req.params, 'id');
-
-            const config = await smtpConfigService.update(organizationId, id, req.body, actingUserId);
+            const config = await smtpConfigService.update(req.user.organizationId, id, req.body, req.user.id);
             res.json({ data: config });
         } catch (error) {
             console.error('Error updating SMTP config:', error);
@@ -114,20 +103,15 @@ export function createSmtpConfigRouter(smtpConfigService: ISmtpConfigService): R
         }
     });
 
-    // DELETE /smtp-config/:id - Delete SMTP config
-    router.delete('/:id', async (req: Request, res: Response) => {
+    // DELETE /smtp-config/:id
+    router.delete('/:id', check(), async (req: Request, res: Response) => {
         try {
-            const organizationId = req.user?.organizationId;
-            const actingUserId = req.user?.id;
-            if (!organizationId || !actingUserId) {
-                res.status(401).json({ error: 'Unauthorized', message: 'Missing user context' });
+            if (!req.user || !req.user.organizationId || !req.user.id) {
+                res.status(401).json({ error: 'Unauthorized' });
                 return;
             }
-
-            // PARAM SAFETY: Strict normalization
             const id = getRequiredParam(req.params, 'id');
-
-            await smtpConfigService.delete(organizationId, id, actingUserId);
+            await smtpConfigService.delete(req.user.organizationId, id, req.user.id);
             res.status(204).send();
         } catch (error) {
             console.error('Error deleting SMTP config:', error);
@@ -135,21 +119,16 @@ export function createSmtpConfigRouter(smtpConfigService: ISmtpConfigService): R
         }
     });
 
-    // POST /smtp-config/:id/activate - Activate SMTP config
-    router.post('/:id/activate', async (req: Request, res: Response) => {
+    // POST /smtp-config/:id/activate
+    router.post('/:id/activate', check(), async (req: Request, res: Response) => {
         try {
-            const organizationId = req.user?.organizationId;
-            const actingUserId = req.user?.id;
-            if (!organizationId || !actingUserId) {
-                res.status(401).json({ error: 'Unauthorized', message: 'Missing user context' });
+            if (!req.user || !req.user.organizationId || !req.user.id) {
+                res.status(401).json({ error: 'Unauthorized' });
                 return;
             }
-
-            // PARAM SAFETY: Strict normalization
             const id = getRequiredParam(req.params, 'id');
-
-            await smtpConfigService.activate(organizationId, id, actingUserId);
-            res.status(204).send();
+            await smtpConfigService.activate(req.user.organizationId, id, req.user.id);
+            res.json({ message: 'SMTP config activated' });
         } catch (error) {
             console.error('Error activating SMTP config:', error);
             res.status(500).json({ error: 'Internal Server Error' });

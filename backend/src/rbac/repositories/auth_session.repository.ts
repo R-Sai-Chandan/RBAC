@@ -1,49 +1,44 @@
-/**
- * AuthSessionRepository
- * 
- * Data access layer for AuthSession entities.
- * All operations scoped to organizationId for multi-tenant isolation.
- */
 
+import { Pool } from 'pg';
+import { BaseRepository } from './base.repository';
 import { AuthSession } from '../models/auth_session.model';
 
 export interface IAuthSessionRepository {
-    /**
-     * Find session by ID within organization
-     * @throws AuthSessionNotFoundError
-     */
+    create(organizationId: string, data: any): Promise<AuthSession>;
     findById(organizationId: string, sessionId: string): Promise<AuthSession | null>;
-
-    /**
-     * Find all active sessions for a user
-     */
-    findActiveByUser(organizationId: string, userId: string): Promise<AuthSession[]>;
-
-    /**
-     * Find all sessions for a user (active and logged out)
-     */
-    findAllByUser(organizationId: string, userId: string): Promise<AuthSession[]>;
-
-    /**
-     * Create a new session
-     * @throws AuthSessionCreationError
-     */
-    create(organizationId: string, data: Omit<AuthSession, 'id' | 'organization_id' | 'login_at'>): Promise<AuthSession>;
-
-    /**
-     * Update session (e.g., set logout_at)
-     * @throws AuthSessionNotFoundError
-     */
-    update(organizationId: string, sessionId: string, data: Partial<AuthSession>): Promise<AuthSession>;
-
-    /**
-     * Delete session
-     * @throws AuthSessionNotFoundError
-     */
+    update(organizationId: string, sessionId: string, data: any): Promise<AuthSession>;
     delete(organizationId: string, sessionId: string): Promise<void>;
-
-    /**
-     * Delete all sessions for a user
-     */
+    findAllByUser(organizationId: string, userId: string): Promise<AuthSession[]>;
+    findActiveByUser(organizationId: string, userId: string): Promise<AuthSession[]>;
     deleteAllByUser(organizationId: string, userId: string): Promise<void>;
+}
+
+export class AuthSessionRepository extends BaseRepository<AuthSession> implements IAuthSessionRepository {
+    constructor(pool: Pool) {
+        super(pool, 'auth_sessions');
+    }
+
+    async findAllByUser(organizationId: string, userId: string): Promise<AuthSession[]> {
+        const res = await this.query(
+            `SELECT * FROM ${this.tableName} WHERE user_id = $1 AND organization_id = $2 AND deleted_at IS NULL`,
+            [userId, organizationId]
+        );
+        return res.rows;
+    }
+
+    async findActiveByUser(organizationId: string, userId: string): Promise<AuthSession[]> {
+        // active = logout_at is null (and not deleted)
+        const res = await this.query(
+            `SELECT * FROM ${this.tableName} WHERE user_id = $1 AND organization_id = $2 AND logout_at IS NULL AND deleted_at IS NULL`,
+            [userId, organizationId]
+        );
+        return res.rows;
+    }
+
+    async deleteAllByUser(organizationId: string, userId: string): Promise<void> {
+        await this.query(
+            `UPDATE ${this.tableName} SET deleted_at = NOW() WHERE user_id = $1 AND organization_id = $2`,
+            [userId, organizationId]
+        );
+    }
 }

@@ -1,43 +1,67 @@
-/**
- * RoleProfileRepository
- * 
- * Data access layer for RoleProfile assignments.
- * All operations scoped to organizationId for multi-tenant isolation.
- */
 
+import { Pool } from 'pg';
+import { BaseRepository } from './base.repository';
 import { RoleProfile } from '../models/role_profile.model';
 
 export interface IRoleProfileRepository {
-    /**
-     * Find all profiles assigned to a role
-     */
     findProfilesByRole(organizationId: string, roleId: string): Promise<RoleProfile[]>;
-
-    /**
-     * Find all roles assigned to a profile
-     */
     findRolesByProfile(organizationId: string, profileId: string): Promise<RoleProfile[]>;
-
-    /**
-     * Check if role has specific profile
-     */
     hasProfile(organizationId: string, roleId: string, profileId: string): Promise<boolean>;
-
-    /**
-     * Assign profile to role
-     * @throws RoleProfileAssignmentError
-     * @throws DuplicateAssignmentError
-     */
     assign(organizationId: string, roleId: string, profileId: string, assignedBy?: string): Promise<RoleProfile>;
-
-    /**
-     * Revoke profile from role
-     * @throws RoleProfileNotFoundError
-     */
     revoke(organizationId: string, roleId: string, profileId: string): Promise<void>;
-
-    /**
-     * Revoke all profiles from role
-     */
     revokeAllByRole(organizationId: string, roleId: string): Promise<void>;
+}
+
+export class RoleProfileRepository extends BaseRepository<RoleProfile> implements IRoleProfileRepository {
+    constructor(pool: Pool) {
+        super(pool, 'role_profiles');
+    }
+
+    async findProfilesByRole(organizationId: string, roleId: string): Promise<RoleProfile[]> {
+        const res = await this.query(
+            `SELECT * FROM ${this.tableName} WHERE role_id = $1 AND organization_id = $2 AND deleted_at IS NULL`,
+            [roleId, organizationId]
+        );
+        return res.rows;
+    }
+
+    async findRolesByProfile(organizationId: string, profileId: string): Promise<RoleProfile[]> {
+        const res = await this.query(
+            `SELECT * FROM ${this.tableName} WHERE profile_id = $1 AND organization_id = $2 AND deleted_at IS NULL`,
+            [profileId, organizationId]
+        );
+        return res.rows;
+    }
+
+    async hasProfile(organizationId: string, roleId: string, profileId: string): Promise<boolean> {
+        const res = await this.query(
+            `SELECT 1 FROM ${this.tableName} WHERE role_id = $1 AND profile_id = $2 AND organization_id = $3 AND deleted_at IS NULL`,
+            [roleId, profileId, organizationId]
+        );
+        return (res.rowCount || 0) > 0;
+    }
+
+    async assign(organizationId: string, roleId: string, profileId: string, assignedBy?: string): Promise<RoleProfile> {
+        const query = `
+            INSERT INTO ${this.tableName} (organization_id, role_id, profile_id, assigned_by)
+            VALUES ($1, $2, $3, $4)
+            RETURNING *
+        `;
+        const res = await this.query(query, [organizationId, roleId, profileId, assignedBy]);
+        return res.rows[0];
+    }
+
+    async revoke(organizationId: string, roleId: string, profileId: string): Promise<void> {
+        await this.query(
+            `UPDATE ${this.tableName} SET deleted_at = NOW() WHERE role_id = $1 AND profile_id = $2 AND organization_id = $3`,
+            [roleId, profileId, organizationId]
+        );
+    }
+
+    async revokeAllByRole(organizationId: string, roleId: string): Promise<void> {
+        await this.query(
+            `UPDATE ${this.tableName} SET deleted_at = NOW() WHERE role_id = $1 AND organization_id = $2`,
+            [roleId, organizationId]
+        );
+    }
 }

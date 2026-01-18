@@ -1,60 +1,57 @@
-/**
- * RoleRepository
- * 
- * Data access layer for Role entities.
- * All operations scoped to organizationId for multi-tenant isolation.
- * Supports hierarchical role queries.
- */
 
+import { Pool } from 'pg';
+import { BaseRepository } from './base.repository';
 import { Role } from '../models/role.model';
 
 export interface IRoleRepository {
-    /**
-     * Find role by ID within organization
-     * @throws RoleNotFoundError
-     */
-    findById(organizationId: string, roleId: string): Promise<Role | null>;
-
-    /**
-     * Find role by code within organization
-     * @throws RoleNotFoundError
-     */
+    create(organizationId: string, data: any): Promise<Role>;
+    update(organizationId: string, id: string, data: any): Promise<Role>;
+    delete(organizationId: string, id: string): Promise<void>;
+    findById(organizationId: string, id: string): Promise<Role | null>;
     findByCode(organizationId: string, code: string): Promise<Role | null>;
-
-    /**
-     * List all roles in organization
-     */
     findAllByOrganization(organizationId: string): Promise<Role[]>;
-
-    /**
-     * Find child roles of a parent role
-     */
-    findChildRoles(organizationId: string, parentRoleId: string): Promise<Role[]>;
-
-    /**
-     * Find all ancestor roles (recursive)
-     * Used to prevent circular references
-     */
     findAncestors(organizationId: string, roleId: string): Promise<Role[]>;
+    findChildRoles(organizationId: string, roleId: string): Promise<Role[]>;
+}
 
-    /**
-     * Create a new role
-     * @throws RoleCreationError
-     * @throws DuplicateRoleCodeError
-     * @throws CircularRoleHierarchyError
-     */
-    create(organizationId: string, data: Omit<Role, 'id' | 'organization_id' | 'created_at'>): Promise<Role>;
+export class RoleRepository extends BaseRepository<Role> implements IRoleRepository {
+    constructor(pool: Pool) {
+        super(pool, 'roles');
+    }
 
-    /**
-     * Update role
-     * @throws RoleNotFoundError
-     * @throws CircularRoleHierarchyError
-     */
-    update(organizationId: string, roleId: string, data: Partial<Role>): Promise<Role>;
+    async findByCode(organizationId: string, code: string): Promise<Role | null> {
+        const res = await this.query(
+            `SELECT * FROM ${this.tableName} WHERE code = $1 AND organization_id = $2 AND deleted_at IS NULL`,
+            [code, organizationId]
+        );
+        return res.rows[0] || null;
+    }
 
-    /**
-     * Delete role (cascade handled by DB)
-     * @throws RoleNotFoundError
-     */
-    delete(organizationId: string, roleId: string): Promise<void>;
+    async findAllByOrganization(organizationId: string): Promise<Role[]> {
+        return this.findAll(organizationId);
+    }
+
+    async findChildRoles(organizationId: string, roleId: string): Promise<Role[]> {
+        const res = await this.query(
+            `SELECT * FROM ${this.tableName} WHERE parent_role_id = $1 AND organization_id = $2 AND deleted_at IS NULL`,
+            [roleId, organizationId]
+        );
+        return res.rows;
+    }
+
+    async findAncestors(organizationId: string, roleId: string): Promise<Role[]> {
+        // Recursive CTE to find all ancestors
+        const query = `
+            WITH RECURSIVE ancestors AS (
+                SELECT * FROM ${this.tableName} WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL
+                UNION
+                SELECT r.* FROM ${this.tableName} r
+                INNER JOIN ancestors a ON a.parent_role_id = r.id
+                WHERE r.organization_id = $2 AND r.deleted_at IS NULL
+            )
+            SELECT * FROM ancestors WHERE id != $1;
+        `;
+        const res = await this.query(query, [roleId, organizationId]);
+        return res.rows;
+    }
 }

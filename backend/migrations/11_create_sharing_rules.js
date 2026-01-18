@@ -5,7 +5,7 @@
  * Enforces type-based validity, multi-entity references, and audit metadata.
  */
 
-exports.up = async function(knex) {
+exports.up = async function (knex) {
   await knex.schema.createTable('sharing_rules', (table) => {
     // === Core identifiers ===
     table.bigIncrements('id').primary();
@@ -27,8 +27,7 @@ exports.up = async function(knex) {
     // === Metadata / optional fields ===
     table.boolean('is_active').defaultTo(true);
     table.timestamp('created_at').defaultTo(knex.fn.now());
-    table.bigInteger('created_by').unsigned()
-      .references('id').inTable('users').onDelete('SET NULL');
+    table.bigInteger('created_by').unsigned().nullable(); // FK via RAW
 
     // === Indexes ===
     table.index('created_by');
@@ -43,17 +42,54 @@ exports.up = async function(knex) {
   });
 
   // === Foreign Keys ===
-  await knex.schema.alterTable('sharing_rules', (table) => {
-    table.foreign('source_user_id').references('id').inTable('users').onDelete('CASCADE');
-    table.foreign('target_user_id').references('id').inTable('users').onDelete('CASCADE');
-    table.foreign('source_role_id').references('id').inTable('roles').onDelete('CASCADE');
-    table.foreign('target_role_id').references('id').inTable('roles').onDelete('CASCADE');
-    table.foreign('source_group_id').references('id').inTable('groups').onDelete('CASCADE');
-    table.foreign('target_group_id').references('id').inTable('groups').onDelete('CASCADE');
-  });
+  // === Foreign Keys ===
+  await knex.raw(`
+    ALTER TABLE sharing_rules
+    -- Source User (Composite)
+    ADD CONSTRAINT fk_sharing_rules_source_user
+    FOREIGN KEY (organization_id, source_user_id)
+    REFERENCES users(organization_id, id)
+    ON DELETE CASCADE,
+
+    -- Target User (Composite)
+    ADD CONSTRAINT fk_sharing_rules_target_user
+    FOREIGN KEY (organization_id, target_user_id)
+    REFERENCES users(organization_id, id)
+    ON DELETE CASCADE,
+
+    -- Source Role (Composite)
+    ADD CONSTRAINT fk_sharing_rules_source_role
+    FOREIGN KEY (organization_id, source_role_id)
+    REFERENCES roles(organization_id, id)
+    ON DELETE CASCADE,
+
+    -- Target Role (Composite)
+    ADD CONSTRAINT fk_sharing_rules_target_role
+    FOREIGN KEY (organization_id, target_role_id)
+    REFERENCES roles(organization_id, id)
+    ON DELETE CASCADE,
+
+    -- Source Group (Single - Cross-Org Allowed)
+    ADD CONSTRAINT fk_sharing_rules_source_group
+    FOREIGN KEY (source_group_id)
+    REFERENCES groups(id)
+    ON DELETE CASCADE,
+
+    -- Target Group (Single - Cross-Org Allowed)
+    ADD CONSTRAINT fk_sharing_rules_target_group
+    FOREIGN KEY (target_group_id)
+    REFERENCES groups(id)
+    ON DELETE CASCADE,
+
+    -- Created By (Composite - Audit)
+    ADD CONSTRAINT fk_sharing_rules_created_by
+    FOREIGN KEY (organization_id, created_by)
+    REFERENCES users(organization_id, id)
+    ON DELETE SET NULL;
+  `);
 };
 
-exports.down = async function(knex) {
+exports.down = async function (knex) {
   await knex.schema.dropTableIfExists('sharing_rules');
 };
 

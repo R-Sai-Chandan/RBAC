@@ -1,53 +1,42 @@
-/**
- * UserRepository
- * 
- * Data access layer for User entities.
- * All operations scoped to organizationId for multi-tenant isolation.
- */
 
+import { Pool } from 'pg';
+import { BaseRepository } from './base.repository';
 import { User } from '../models/user.model';
 
 export interface IUserRepository {
-    /**
-     * Find user by ID within organization
-     * @throws UserNotFoundError
-     */
     findById(organizationId: string, userId: string): Promise<User | null>;
-
-    /**
-     * Find user by username within organization
-     * @throws UserNotFoundError
-     */
     findByUsername(organizationId: string, username: string): Promise<User | null>;
-
-    /**
-     * Find user by email within organization
-     * @throws UserNotFoundError
-     */
     findByEmail(organizationId: string, email: string): Promise<User | null>;
-
-    /**
-     * List all users in organization
-     */
     findAllByOrganization(organizationId: string): Promise<User[]>;
-
-    /**
-     * Create a new user
-     * @throws UserCreationError
-     * @throws DuplicateUsernameError
-     * @throws DuplicateEmailError
-     */
-    create(organizationId: string, data: Omit<User, 'id' | 'organization_id' | 'created_at' | 'updated_at'>): Promise<User>;
-
-    /**
-     * Update user
-     * @throws UserNotFoundError
-     */
+    create(organizationId: string, data: any): Promise<User>;
     update(organizationId: string, userId: string, data: Partial<User>): Promise<User>;
-
-    /**
-     * Delete user (cascade handled by DB)
-     * @throws UserNotFoundError
-     */
     delete(organizationId: string, userId: string): Promise<void>;
+    findAll(organizationId: string, filters?: any): Promise<User[]>; // For Filter Support
 }
+
+export class UserRepository extends BaseRepository<User> implements IUserRepository {
+    constructor(pool: Pool) {
+        super(pool, 'users');
+    }
+
+    async findByUsername(organizationId: string, username: string): Promise<User | null> {
+        const res = await this.query(
+            `SELECT * FROM ${this.tableName} WHERE username = $1 AND organization_id = $2 AND deleted_at IS NULL`,
+            [username, organizationId]
+        );
+        return res.rows[0] || null;
+    }
+
+    async findByEmail(organizationId: string, email: string): Promise<User | null> {
+        const res = await this.query(
+            `SELECT * FROM ${this.tableName} WHERE primary_email = $1 AND organization_id = $2 AND deleted_at IS NULL`,
+            [email, organizationId]
+        );
+        return res.rows[0] || null;
+    }
+
+    async findAllByOrganization(organizationId: string): Promise<User[]> {
+        return this.findAll(organizationId);
+    }
+}
+
