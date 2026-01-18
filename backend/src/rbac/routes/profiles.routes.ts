@@ -20,11 +20,8 @@ export function createProfilesRouter(
 ): Router {
     const router = Router();
 
-    // SETTINGS:manage_profiles permission for all profile management routes
-    const check = () => requirePermission('SETTINGS', 'manage_profiles', evaluationService, auditService);
-
-    // GET /profiles - List all profiles
-    router.get('/', check(), async (req: Request, res: Response) => {
+    // GET /profiles - List all profiles -> READ
+    router.get('/', requirePermission('PROFILES', 'read', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
             if (!req.user || !req.user.organizationId) {
                 res.status(401).json({ error: 'Unauthorized' });
@@ -38,8 +35,8 @@ export function createProfilesRouter(
         }
     });
 
-    // GET /profiles/:id
-    router.get('/:id', check(), async (req: Request, res: Response) => {
+    // GET /profiles/:id -> READ
+    router.get('/:id', requirePermission('PROFILES', 'read', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
             if (!req.user || !req.user.organizationId) {
                 res.status(401).json({ error: 'Unauthorized' });
@@ -58,8 +55,8 @@ export function createProfilesRouter(
         }
     });
 
-    // POST /profiles
-    router.post('/', check(), async (req: Request, res: Response) => {
+    // POST /profiles -> CREATE
+    router.post('/', requirePermission('PROFILES', 'create', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
             if (!req.user || !req.user.organizationId || !req.user.id) {
                 res.status(401).json({ error: 'Unauthorized' });
@@ -73,8 +70,8 @@ export function createProfilesRouter(
         }
     });
 
-    // PATCH /profiles/:id
-    router.patch('/:id', check(), async (req: Request, res: Response) => {
+    // PATCH /profiles/:id -> UPDATE
+    router.patch('/:id', requirePermission('PROFILES', 'update', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
             if (!req.user || !req.user.organizationId || !req.user.id) {
                 res.status(401).json({ error: 'Unauthorized' });
@@ -93,8 +90,8 @@ export function createProfilesRouter(
         }
     });
 
-    // DELETE /profiles/:id
-    router.delete('/:id', check(), async (req: Request, res: Response) => {
+    // DELETE /profiles/:id -> DELETE
+    router.delete('/:id', requirePermission('PROFILES', 'delete', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
             if (!req.user || !req.user.organizationId || !req.user.id) {
                 res.status(401).json({ error: 'Unauthorized' });
@@ -113,8 +110,8 @@ export function createProfilesRouter(
         }
     });
 
-    // GET /profiles/:id/permissions
-    router.get('/:id/permissions', check(), async (req: Request, res: Response) => {
+    // GET /profiles/:id/permissions -> READ
+    router.get('/:id/permissions', requirePermission('PROFILES', 'read', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
             if (!req.user || !req.user.organizationId) {
                 res.status(401).json({ error: 'Unauthorized' });

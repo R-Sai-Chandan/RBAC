@@ -14,7 +14,7 @@ export interface IProfilePermissionRepository {
 }
 
 export class ProfilePermissionRepository extends BaseRepository<ProfilePermission> implements IProfilePermissionRepository {
-    constructor(pool: Pool) {
+    constructor(pool: InstanceType<typeof Pool>) {
         super(pool, 'profile_permissions');
     }
 
@@ -49,7 +49,7 @@ export class ProfilePermissionRepository extends BaseRepository<ProfilePermissio
             RETURNING *
         `;
         const res = await this.query(query, [organizationId, profileId, permissionId, effect]);
-        return res.rows[0];
+        return res.rows[0]!;
     }
 
     async updateEffect(organizationId: string, profileId: string, permissionId: string, effect: ProfilePermissionEffect): Promise<ProfilePermission> {
@@ -61,7 +61,7 @@ export class ProfilePermissionRepository extends BaseRepository<ProfilePermissio
         `;
         const res = await this.query(query, [profileId, permissionId, organizationId, effect]);
         if (!res.rows.length) throw new Error('Assignment not found');
-        return res.rows[0];
+        return res.rows[0]!;
     }
 
     async revoke(organizationId: string, profileId: string, permissionId: string): Promise<void> {

@@ -13,7 +13,7 @@ export interface IPermissionRepository {
 }
 
 export class PermissionRepository extends BaseRepository<Permission> implements IPermissionRepository {
-    constructor(pool: Pool) {
+    constructor(pool: InstanceType<typeof Pool>) {
         super(pool, 'permissions');
     }
 

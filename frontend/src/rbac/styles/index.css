@@ -1,0 +1,87 @@
+/* ===============================================
+   RBAC STYLES - Main Import File
+   =============================================== */
+
+@import './base.css';
+@import './layout.css';
+@import './forms.css';
+@import './tables.css';
+@import './pages.css';
+
+/* Utility Classes */
+.flex {
+    display: flex;
+}
+
+.flex-column {
+    flex-direction: column;
+}
+
+.flex-center {
+    justify-content: center;
+    align-items: center;
+}
+
+.flex-between {
+    justify-content: space-between;
+}
+
+.flex-gap-5 {
+    gap: 5px;
+}
+
+.flex-gap-8 {
+    gap: 8px;
+}
+
+.flex-gap-10 {
+    gap: 10px;
+}
+
+.flex-gap-15 {
+    gap: 15px;
+}
+
+.flex-1 {
+    flex: 1;
+}
+
+.mt-10 {
+    margin-top: 10px;
+}
+
+.mt-20 {
+    margin-top: 20px;
+}
+
+.mb-10 {
+    margin-bottom: 10px;
+}
+
+.mb-15 {
+    margin-bottom: 15px;
+}
+
+.mb-20 {
+    margin-bottom: 20px;
+}
+
+.p-10 {
+    padding: 10px;
+}
+
+.p-20 {
+    padding: 20px;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.text-right {
+    text-align: right;
+}
+
+.w-full {
+    width: 100%;
+}

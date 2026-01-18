@@ -16,14 +16,14 @@ const SAFE_FALLBACK_PAGE = '/rbac/profile';
 // Valid landing pages (server-side validation)
 const VALID_LANDING_PAGES = [
     '/rbac/profile',
-    '/rbac/settings',
-    '/rbac/settings/users',
-    '/rbac/settings/roles',
-    '/rbac/settings/profiles',
-    '/rbac/settings/groups',
-    '/rbac/settings/sharing',
-    '/rbac/settings/smtp',
-    '/rbac/settings/audit'
+    '/rbac/profile',
+    '/rbac/users',
+    '/rbac/roles',
+    '/rbac/profiles',
+    '/rbac/groups',
+    '/rbac/sharing-rules',
+    '/rbac/smtp-config',
+    '/rbac/audit-logs'
 ];
 
 export function createMeRouter(
@@ -67,12 +67,26 @@ export function createMeRouter(
                 landingPage = SAFE_FALLBACK_PAGE;
             }
 
-            // If landing page requires SETTINGS access, verify permission
-            if (landingPage.startsWith('/rbac/settings')) {
-                const settingsDecision = await evaluationService.evaluate(
-                    organizationId, userId, 'SETTINGS', 'read'
+            // Verify permission for the requested landing page
+            // Map paths to (MODULE, ACTION) requirements
+            const pathRequirements: { [key: string]: [string, string] } = {
+                '/rbac/users': ['USERS', 'read'],
+                '/rbac/roles': ['ROLES', 'read'],
+                '/rbac/profiles': ['PROFILES', 'read'],
+                '/rbac/groups': ['GROUPS', 'read'],
+                '/rbac/sharing-rules': ['SHARING', 'read'],
+                '/rbac/smtp-config': ['SMTP_CONFIG', 'read'],
+                '/rbac/audit-logs': ['AUDIT', 'read']
+            };
+
+            const requirement = Object.entries(pathRequirements).find(([path]) => landingPage.startsWith(path));
+
+            if (requirement) {
+                const [_, [moduleCode, action]] = requirement;
+                const decision = await evaluationService.evaluate(
+                    organizationId, userId, moduleCode, action
                 );
-                if (!settingsDecision.granted) {
+                if (!decision.granted) {
                     landingPage = SAFE_FALLBACK_PAGE;
                 }
             }
@@ -120,50 +134,48 @@ export function createMeRouter(
 
             const modules: any[] = [];
 
-            // SETTINGS is the ONLY admin module
-            const settingsReadDecision = await evaluationService.evaluate(
-                organizationId, userId, 'SETTINGS', 'read'
-            );
+            // 5. Build Navigation (Strict RBAC)
+            // Group modules under 'RBAC' Product for UI
+            const rbacProduct: any = {
+                code: 'PRODUCT_RBAC',
+                label: 'RBAC',
+                route: '/rbac',
+                icon: 'shield',
+                isVisible: true,
+                actions: ['read'],
+                children: []
+            };
 
-            if (settingsReadDecision.granted) {
-                const settingsModule: any = {
-                    code: 'SETTINGS',
-                    label: 'Settings',
-                    route: '/rbac/settings',
-                    icon: 'settings',
-                    isVisible: true,
-                    actions: ['read'],
-                    children: []
-                };
+            // Define RBAC modules and their required permissions
+            const rbacModules = [
+                { jsCode: 'USERS', label: 'Users', route: '/rbac/users', action: 'read' },
+                { jsCode: 'ROLES', label: 'Roles', route: '/rbac/roles', action: 'read' },
+                { jsCode: 'PROFILES', label: 'Profiles', route: '/rbac/profiles', action: 'read' },
+                { jsCode: 'GROUPS', label: 'Groups', route: '/rbac/groups', action: 'read' },
+                { jsCode: 'SHARING', label: 'Sharing Rules', route: '/rbac/sharing-rules', action: 'read' },
+                { jsCode: 'SMTP_CONFIG', label: 'Email Settings', route: '/rbac/smtp-config', action: 'read' },
+                { jsCode: 'AUDIT', label: 'Audit Logs', route: '/rbac/audit-logs', action: 'read' }
+            ];
 
-                // Sub-capabilities under SETTINGS
-                const subCapabilities = [
-                    { action: 'manage_users', label: 'Users', route: '/rbac/settings/users' },
-                    { action: 'manage_roles', label: 'Roles', route: '/rbac/settings/roles' },
-                    { action: 'manage_profiles', label: 'Profiles', route: '/rbac/settings/profiles' },
-                    { action: 'manage_groups', label: 'Groups', route: '/rbac/settings/groups' },
-                    { action: 'manage_sharing', label: 'Sharing Rules', route: '/rbac/settings/sharing' },
-                    { action: 'manage_smtp', label: 'Email Settings', route: '/rbac/settings/smtp' },
-                    { action: 'view_audit', label: 'Audit Logs', route: '/rbac/settings/audit' }
-                ];
-
-                for (const sub of subCapabilities) {
-                    const decision = await evaluationService.evaluate(
-                        organizationId, userId, 'SETTINGS', sub.action
-                    );
-                    if (decision.granted) {
-                        settingsModule.children.push({
-                            code: `SETTINGS_${sub.action.toUpperCase()}`,
-                            label: sub.label,
-                            route: sub.route,
-                            isVisible: true,
-                            actions: [sub.action]
-                        });
-                    }
+            // Evaluate permissions for each module
+            for (const mod of rbacModules) {
+                const decision = await evaluationService.evaluate(
+                    organizationId, userId, mod.jsCode, mod.action
+                );
+                if (decision.granted) {
+                    rbacProduct.children.push({
+                        code: mod.jsCode,
+                        label: mod.label,
+                        route: mod.route,
+                        isVisible: true,
+                        actions: [mod.action]
+                    });
                 }
+            }
 
-                // Only show SETTINGS if user has at least read access
-                modules.push(settingsModule);
+            // Only show RBAC product if it has children
+            if (rbacProduct.children.length > 0) {
+                modules.push(rbacProduct);
             }
 
             res.json({ data: { modules } });
@@ -252,10 +264,23 @@ export function createMeRouter(
                     return;
                 }
 
-                // If page requires SETTINGS, verify permission
-                if (defaultLandingPage.startsWith('/rbac/settings')) {
+                // Verify permission for the requested landing page
+                const pathRequirements: { [key: string]: [string, string] } = {
+                    '/rbac/users': ['USERS', 'read'],
+                    '/rbac/roles': ['ROLES', 'read'],
+                    '/rbac/profiles': ['PROFILES', 'read'],
+                    '/rbac/groups': ['GROUPS', 'read'],
+                    '/rbac/sharing-rules': ['SHARING', 'read'],
+                    '/rbac/smtp-config': ['SMTP_CONFIG', 'read'],
+                    '/rbac/audit-logs': ['AUDIT', 'read']
+                };
+
+                const requirement = Object.entries(pathRequirements).find(([path]) => defaultLandingPage.startsWith(path));
+
+                if (requirement) {
+                    const [_, [moduleCode, action]] = requirement;
                     const decision = await evaluationService.evaluate(
-                        organizationId, userId, 'SETTINGS', 'read'
+                        organizationId, userId, moduleCode, action
                     );
                     if (!decision.granted) {
                         res.status(403).json({ error: 'Forbidden', message: 'No access to selected landing page' });

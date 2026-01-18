@@ -20,11 +20,8 @@ export function createRolesRouter(
 ): Router {
     const router = Router();
 
-    // SETTINGS:manage_roles permission for all role management routes
-    const check = () => requirePermission('SETTINGS', 'manage_roles', evaluationService, auditService);
-
-    // GET /roles - List all roles
-    router.get('/', check(), async (req: Request, res: Response) => {
+    // GET /roles - List all roles -> READ
+    router.get('/', requirePermission('ROLES', 'read', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
             if (!req.user || !req.user.id || !req.user.organizationId) {
                 res.status(401).json({ error: 'Unauthorized', message: 'Missing user context' });
@@ -40,8 +37,8 @@ export function createRolesRouter(
         }
     });
 
-    // GET /roles/:id - Get role by ID
-    router.get('/:id', check(), async (req: Request, res: Response) => {
+    // GET /roles/:id - Get role by ID -> READ
+    router.get('/:id', requirePermission('ROLES', 'read', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
             if (!req.user || !req.user.organizationId) {
                 res.status(401).json({ error: 'Unauthorized', message: 'Missing user context' });
@@ -61,8 +58,8 @@ export function createRolesRouter(
         }
     });
 
-    // POST /roles - Create new role
-    router.post('/', check(), async (req: Request, res: Response) => {
+    // POST /roles - Create new role -> CREATE
+    router.post('/', requirePermission('ROLES', 'create', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
             if (!req.user || !req.user.id || !req.user.organizationId) {
                 res.status(401).json({ error: 'Unauthorized', message: 'Missing user context' });
@@ -81,8 +78,8 @@ export function createRolesRouter(
         }
     });
 
-    // PATCH /roles/:id - Update role
-    router.patch('/:id', check(), async (req: Request, res: Response) => {
+    // PATCH /roles/:id - Update role -> UPDATE
+    router.patch('/:id', requirePermission('ROLES', 'update', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
             if (!req.user || !req.user.organizationId) {
                 res.status(401).json({ error: 'Unauthorized', message: 'Missing user context' });
@@ -106,8 +103,8 @@ export function createRolesRouter(
         }
     });
 
-    // DELETE /roles/:id - Delete role
-    router.delete('/:id', check(), async (req: Request, res: Response) => {
+    // DELETE /roles/:id - Delete role -> DELETE
+    router.delete('/:id', requirePermission('ROLES', 'delete', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
             if (!req.user || !req.user.organizationId) {
                 res.status(401).json({ error: 'Unauthorized', message: 'Missing user context' });
@@ -127,8 +124,8 @@ export function createRolesRouter(
         }
     });
 
-    // POST /roles/:id/users - Assign user to role
-    router.post('/:id/users', check(), async (req: Request, res: Response) => {
+    // POST /roles/:id/users - Assign user to role -> UPDATE (Role Membership)
+    router.post('/:id/users', requirePermission('ROLES', 'update', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
             if (!req.user || !req.user.id || !req.user.organizationId) {
                 res.status(401).json({ error: 'Unauthorized', message: 'Missing user context' });
@@ -159,8 +156,8 @@ export function createRolesRouter(
         }
     });
 
-    // DELETE /roles/:id/users/:userId - Remove user from role
-    router.delete('/:id/users/:userId', check(), async (req: Request, res: Response) => {
+    // DELETE /roles/:id/users/:userId - Remove user from role -> UPDATE (Role Membership)
+    router.delete('/:id/users/:userId', requirePermission('ROLES', 'update', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
             if (!req.user || !req.user.organizationId) {
                 res.status(401).json({ error: 'Unauthorized', message: 'Missing user context' });

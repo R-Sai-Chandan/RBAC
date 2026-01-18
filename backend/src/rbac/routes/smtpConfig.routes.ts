@@ -19,11 +19,8 @@ export function createSmtpConfigRouter(
 ): Router {
     const router = Router();
 
-    // SETTINGS:manage_smtp permission for all SMTP config routes
-    const check = () => requirePermission('SETTINGS', 'manage_smtp', evaluationService, auditService);
-
-    // GET /smtp-config
-    router.get('/', check(), async (req: Request, res: Response) => {
+    // GET /smtp-config -> READ
+    router.get('/', requirePermission('SMTP_CONFIG', 'read', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
             if (!req.user || !req.user.organizationId) {
                 res.status(401).json({ error: 'Unauthorized' });
@@ -37,8 +34,8 @@ export function createSmtpConfigRouter(
         }
     });
 
-    // GET /smtp-config/active
-    router.get('/active', check(), async (req: Request, res: Response) => {
+    // GET /smtp-config/active -> READ
+    router.get('/active', requirePermission('SMTP_CONFIG', 'read', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
             if (!req.user || !req.user.organizationId) {
                 res.status(401).json({ error: 'Unauthorized' });
@@ -56,8 +53,8 @@ export function createSmtpConfigRouter(
         }
     });
 
-    // GET /smtp-config/:id
-    router.get('/:id', check(), async (req: Request, res: Response) => {
+    // GET /smtp-config/:id -> READ
+    router.get('/:id', requirePermission('SMTP_CONFIG', 'read', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
             if (!req.user || !req.user.organizationId) {
                 res.status(401).json({ error: 'Unauthorized' });
@@ -72,8 +69,8 @@ export function createSmtpConfigRouter(
         }
     });
 
-    // POST /smtp-config
-    router.post('/', check(), async (req: Request, res: Response) => {
+    // POST /smtp-config -> CREATE
+    router.post('/', requirePermission('SMTP_CONFIG', 'create', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
             if (!req.user || !req.user.organizationId || !req.user.id) {
                 res.status(401).json({ error: 'Unauthorized' });
@@ -87,8 +84,8 @@ export function createSmtpConfigRouter(
         }
     });
 
-    // PATCH /smtp-config/:id
-    router.patch('/:id', check(), async (req: Request, res: Response) => {
+    // PATCH /smtp-config/:id -> UPDATE
+    router.patch('/:id', requirePermission('SMTP_CONFIG', 'update', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
             if (!req.user || !req.user.organizationId || !req.user.id) {
                 res.status(401).json({ error: 'Unauthorized' });
@@ -103,8 +100,8 @@ export function createSmtpConfigRouter(
         }
     });
 
-    // DELETE /smtp-config/:id
-    router.delete('/:id', check(), async (req: Request, res: Response) => {
+    // DELETE /smtp-config/:id -> DELETE
+    router.delete('/:id', requirePermission('SMTP_CONFIG', 'delete', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
             if (!req.user || !req.user.organizationId || !req.user.id) {
                 res.status(401).json({ error: 'Unauthorized' });
@@ -119,8 +116,8 @@ export function createSmtpConfigRouter(
         }
     });
 
-    // POST /smtp-config/:id/activate
-    router.post('/:id/activate', check(), async (req: Request, res: Response) => {
+    // POST /smtp-config/:id/activate -> UPDATE
+    router.post('/:id/activate', requirePermission('SMTP_CONFIG', 'update', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
             if (!req.user || !req.user.organizationId || !req.user.id) {
                 res.status(401).json({ error: 'Unauthorized' });

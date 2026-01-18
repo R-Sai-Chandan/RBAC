@@ -37,7 +37,6 @@ export default function RolesPage() {
     const buildTree = (roles: any[]): Role[] => {
         const map = new Map();
         const roots: Role[] = [];
-        // deep copy
         const list = roles.map(r => ({ ...r, children: [] }));
 
         list.forEach(r => map.set(r.id, r));
@@ -100,7 +99,6 @@ export default function RolesPage() {
         setIsModalOpen(true);
     };
 
-    // Flatten for dropdown
     const getAllRoles = (nodes: Role[]): Role[] => {
         let list: Role[] = [];
         nodes.forEach(n => {
@@ -112,13 +110,14 @@ export default function RolesPage() {
     const flatRoles = getAllRoles(roles);
 
     const RoleNode = ({ role, level }: { role: Role, level: number }) => (
-        <div style={{ marginLeft: level * 20 + 'px', marginTop: '10px', borderLeft: '2px solid #ddd', paddingLeft: '10px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '10px', borderRadius: '4px', border: '1px solid #eee' }}>
-                <div>
-                    <strong>{role.name}</strong> <span style={{ color: '#666', fontSize: '0.9em' }}>{role.description}</span>
+        <div className={`table-tree-node table-tree-node--level-${level}`}>
+            <div className="table-tree-node__item">
+                <div className="table-tree-node__content">
+                    <span className="table-tree-node__title">{role.name}</span>
+                    <span className="table-tree-node__description">{role.description}</span>
                 </div>
-                <div>
-                    <Button variant="secondary" onClick={() => openEdit(role)} style={{ marginRight: '5px' }}>Edit</Button>
+                <div className="table-tree-node__actions">
+                    <Button variant="secondary" onClick={() => openEdit(role)}>Edit</Button>
                     <Button variant="danger" onClick={() => handleDelete(role)}>Delete</Button>
                 </div>
             </div>
@@ -128,7 +127,7 @@ export default function RolesPage() {
 
     return (
         <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <div className="page-header">
                 <h1>Roles & Hierarchy</h1>
                 <Button onClick={openCreate}>Create Role</Button>
             </div>
@@ -154,21 +153,21 @@ export default function RolesPage() {
                         onChange={(e: any) => setFormData({ ...formData, description: e.target.value })}
                     />
 
-                    <div style={{ marginBottom: '15px' }}>
-                        <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Parent Role</label>
+                    <div className="form-group">
+                        <label className="form-label">Parent Role</label>
                         <select
                             value={formData.parentRoleId}
                             onChange={(e) => setFormData({ ...formData, parentRoleId: e.target.value })}
-                            style={{ width: '100%', padding: '8px' }}
+                            className="form-select"
                         >
                             <option value="">(None - Root Role)</option>
-                            {flatRoles.filter(r => r.id !== editingRole?.id).map(r => ( // Prevent self-parenting
+                            {flatRoles.filter(r => r.id !== editingRole?.id).map(r => (
                                 <option key={r.id} value={r.id}>{r.name}</option>
                             ))}
                         </select>
                     </div>
 
-                    <div style={{ textAlign: 'right', marginTop: '20px' }}>
+                    <div className="form-actions">
                         <Button type="submit">Save Role</Button>
                     </div>
                 </form>

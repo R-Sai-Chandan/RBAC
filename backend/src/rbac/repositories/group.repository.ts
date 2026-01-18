@@ -14,7 +14,7 @@ export interface IGroupRepository {
 }
 
 export class GroupRepository extends BaseRepository<Group> implements IGroupRepository {
-    constructor(pool: Pool) {
+    constructor(pool: InstanceType<typeof Pool>) {
         super(pool, 'groups');
     }
 

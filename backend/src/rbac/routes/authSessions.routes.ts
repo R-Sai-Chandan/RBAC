@@ -18,36 +18,35 @@ export function createAuthSessionsRouter(
 ): Router {
     const router = Router();
 
+
     // PUBLIC: Login
     router.post('/login', async (req: Request, res: Response) => {
         try {
-            // Accept 'identifier' (username or email) OR legacy 'username' field
-            const { organizationId, identifier, username, password } = req.body;
+            const { identifier, username, password } = req.body;
             const loginIdentifier = identifier || username;
 
             // 1. Basic Validation
-            if (!organizationId || !loginIdentifier || !password) {
+            if (!loginIdentifier || !password) {
                 res.status(400).json({
                     error: 'Bad Request',
-                    message: 'Missing credentials. Required: organizationId, identifier/username, password'
+                    message: 'Missing credentials. Required: identifier/username, password'
                 });
                 return;
             }
 
-            // 2. Find User by username or email
-            let user = await userRepository.findByUsername(organizationId, loginIdentifier);
+            // 2. Find User globally (across all orgs)
+            let user = await userRepository.findByUsernameGlobal(loginIdentifier);
             if (!user) {
-                // Try by email
-                user = await userRepository.findByEmail(organizationId, loginIdentifier);
+                user = await userRepository.findByEmailGlobal(loginIdentifier);
             }
             if (!user) {
-                // Fail generic (prevent enumeration)
                 res.status(401).json({ error: 'Unauthorized', message: 'Invalid credentials' });
                 return;
             }
 
+            const organizationId = user.organization_id;
+
             // 3. Verify Status
-            // Check if user is active (assuming status is UserStatus, comparing string value)
             if (user.status !== 'active') {
                 res.status(401).json({ error: 'Unauthorized', message: 'Account inactive' });
                 return;
@@ -73,24 +72,24 @@ export function createAuthSessionsRouter(
                 ...(userAgent ? { user_agent: userAgent } : {})
             });
 
-            // 6. Set HTTP-Only Cookie (Transport Migration)
+            // 6. Set HTTP-Only Cookie
             const isProd = process.env.NODE_ENV === 'production';
             res.cookie('sessionId', session.id, {
                 httpOnly: true,
-                secure: isProd, // True in prod
+                secure: isProd,
                 sameSite: 'strict',
                 path: '/rbac',
-                maxAge: 24 * 60 * 60 * 1000 // 24 hours (Match session TTL)
+                maxAge: 24 * 60 * 60 * 1000
             });
 
-            // 7. Return User Context (No Session ID in Body)
-            const fullName = `${user.first_name || ''} ${user.last_name}`.trim();
+            // 7. Return User Context
+            const fullName = `${user.first_name || ''} ${user.last_name || ''}`.trim();
             res.status(201).json({
                 data: {
                     user: {
                         id: user.id,
                         username: user.username,
-                        fullName: fullName,
+                        fullName: fullName || user.username,
                         email: user.primary_email
                     }
                 }
@@ -98,7 +97,6 @@ export function createAuthSessionsRouter(
 
         } catch (error) {
             console.error('Login Error:', error);
-            // Internal errors might bubble up; catch them to ensure no leakage
             res.status(500).json({ error: 'Internal Server Error' });
         }
     });

@@ -138,7 +138,7 @@ export class EvaluationService implements IEvaluationService {
             let explicitAllow = false;
             let explicitDeny = false;
 
-            for (const profileId of profileIds) {
+            for (const profileId of Array.from(profileIds)) {
                 const assignment = await this.profilePermissionRepository.findAssignment(
                     organizationId,
                     profileId,

@@ -13,7 +13,7 @@ export interface IUserRoleRepository {
 }
 
 export class UserRoleRepository extends BaseRepository<UserRole> implements IUserRoleRepository {
-    constructor(pool: Pool) {
+    constructor(pool: InstanceType<typeof Pool>) {
         super(pool, 'user_roles');
     }
 
@@ -49,7 +49,7 @@ export class UserRoleRepository extends BaseRepository<UserRole> implements IUse
             RETURNING *
         `;
         const res = await this.query(query, [organizationId, userId, roleId, assignedBy]);
-        return res.rows[0];
+        return res.rows[0]!;
     }
 
     async revoke(organizationId: string, userId: string, roleId: string): Promise<void> {

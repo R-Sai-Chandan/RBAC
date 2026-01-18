@@ -10,7 +10,7 @@ export interface IModuleRepository {
 }
 
 export class ModuleRepository extends BaseRepository<Module> implements IModuleRepository {
-    constructor(pool: Pool) {
+    constructor(pool: InstanceType<typeof Pool>) {
         super(pool, 'modules');
     }
 

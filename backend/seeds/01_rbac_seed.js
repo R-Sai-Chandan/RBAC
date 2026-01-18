@@ -1,310 +1,284 @@
 /**
  * RBAC System Seed Data
- * 
- * ARCHITECTURAL DECISION:
- * - SETTINGS is the ONLY admin module exposed in navigation
- * - USERS, ROLES, PROFILES, GROUPS, SMTP, AUDIT are sub-capabilities under SETTINGS
- * - Permissions: SETTINGS:read, SETTINGS:manage_users, SETTINGS:manage_roles, etc.
- * 
- * All passwords are hashed using bcrypt (Password@123)
+ *
+ * COMPLIANCE NOTE:
+ * This seed strictly adheres to the database schema defined in migrations.
+ *
+ * SCHEMA CONSTRAINTS & RESOLUTION:
+ * 1. Organizations: Requires `company_name`, `address`, `gstin`, etc. (Added)
+ * 2. Permissions: 'action' is restricted to ('create', 'read', 'update', 'delete', 'export').
+ *    - To support granular access (e.g. manage users vs manage roles), we MUST create separate
+ *      DB Modules ('Users', 'Roles', etc.) instead of a single 'Settings' module.
+ *    - This allows unique `read`, `create` actions per resource type.
+ *    - 'Settings' is kept as a logical grouping concept or dashboard module.
  */
 
 const bcrypt = require('bcrypt');
 
 exports.seed = async function (knex) {
-    // ═══════════════════════════════════════════════════════════════════════
-    // PART 1: Organizations
-    // ═══════════════════════════════════════════════════════════════════════
-    await knex('audit_logs').del();
-    await knex('user_groups').del();
-    await knex('groups').del();
-    await knex('role_profiles').del();
-    await knex('profile_permissions').del();
-    await knex('profiles').del();
-    await knex('permissions').del();
-    await knex('modules').del();
-    await knex('user_roles').del();
-    await knex('roles').del();
-    await knex('auth_sessions').del();
-    await knex('users').del();
-    await knex('organizations').del();
+    // ─────────────────────────────────────────────────────────────
+    // 1. CLEANUP (Order is critical due to FKs)
+    // ─────────────────────────────────────────────────────────────
+    // Use a helper to ignore 'table does not exist' if fresh
+    const clean = async (table) => knex(table).del();
 
-    const [org] = await knex('organizations').insert([
-        {
+    await clean('audit_logs');
+    await clean('user_groups');
+    await clean('user_roles');
+    await clean('role_profiles');
+    await clean('profile_permissions');
+    await clean('permissions');
+    await clean('profiles');
+    await clean('groups');
+    await clean('modules');
+    await clean('roles');
+
+    // Organization and User circular dependency handling:
+    // We delete users first, then orgs.
+    // But created_by FKs might lock.
+    // Best practice: Update FKs to null, then delete.
+    await knex('users').update({ reports_to_user_id: null, created_by: null, updated_by: null });
+    await knex('organizations').update({ created_by: null });
+
+    await clean('users');
+    await clean('organizations');
+
+    console.log('✓ Cleanup complete');
+
+    // ─────────────────────────────────────────────────────────────
+    // 2. ORGANIZATION
+    // ─────────────────────────────────────────────────────────────
+    const [org] = await knex('organizations')
+        .insert({
             id: 1,
-            name: 'Acme Corp',
-            domain: 'acme.com',
-            status: 'active',
+            company_name: 'Acme Corp', // Changed from name to company_name
+            // Required Address Fields
+            address: '123 Enterprise Blvd',
+            city: 'Metropolis',
+            state: 'NY',
+            postal_code: '10001',
+            country: 'USA',
+            // Required Tax/Legal
+            gstin: 'URP', // Unregistered Person or valid ID
+            // Optional/Defaults
+            financial_year_start_month: 4,
             created_at: knex.fn.now()
-        }
-    ]).returning('*');
+        })
+        .returning('*');
 
-    console.log('✓ Organization created:', org.name);
+    console.log('✓ Organization created:', org.company_name);
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // PART 2: Users (with bcrypt-hashed passwords)
-    // ═══════════════════════════════════════════════════════════════════════
+    // ─────────────────────────────────────────────────────────────
+    // 3. USERS
+    // ─────────────────────────────────────────────────────────────
     const passwordHash = await bcrypt.hash('Password@123', 10);
 
-    const users = await knex('users').insert([
+    const users = await knex('users')
+        .insert([
+            {
+                id: 1,
+                organization_id: org.id,
+                username: 'superadmin',
+                password_hash: passwordHash,
+                status: 'active',
+                first_name: 'Super',
+                last_name: 'Admin',
+                primary_email: 'superadmin@acme.com',
+                office_phone: '555-0101', // Required
+                default_landing_page: '/rbac/settings',
+                created_at: knex.fn.now()
+            },
+            {
+                id: 2,
+                organization_id: org.id,
+                username: 'admin',
+                password_hash: passwordHash,
+                status: 'active',
+                first_name: 'Regular',
+                last_name: 'Admin',
+                primary_email: 'admin@acme.com',
+                office_phone: '555-0102',
+                default_landing_page: '/rbac/settings/users',
+                created_at: knex.fn.now()
+            },
+            {
+                id: 3,
+                organization_id: org.id,
+                username: 'user',
+                password_hash: passwordHash,
+                status: 'active',
+                first_name: 'Normal',
+                last_name: 'User',
+                primary_email: 'user@acme.com',
+                office_phone: '555-0103',
+                default_landing_page: '/rbac/profile',
+                created_at: knex.fn.now()
+            }
+        ])
+        .returning('*');
+
+    // Link Organization Creator (Circular Fix)
+    await knex('organizations').update({ created_by: users[0].id }).where({ id: org.id });
+    // Link Users Creator
+    await knex('users').update({ created_by: users[0].id }).whereIn('id', [1, 2, 3]);
+
+    console.log('✓ Users created');
+
+    // ─────────────────────────────────────────────────────────────
+    // 4. ROLES
+    // ─────────────────────────────────────────────────────────────
+    await knex('roles').insert([
         {
             id: 1,
             organization_id: org.id,
-            username: 'superadmin',
-            email: 'superadmin@acme.com',
-            password_hash: passwordHash,
-            first_name: 'Super',
-            last_name: 'Admin',
-            status: 'active',
-            default_landing_page: '/rbac/settings',
-            created_at: knex.fn.now()
-        },
-        {
-            id: 2,
-            organization_id: org.id,
-            username: 'admin',
-            email: 'admin@acme.com',
-            password_hash: passwordHash,
-            first_name: 'Regular',
-            last_name: 'Admin',
-            status: 'active',
-            default_landing_page: '/rbac/settings/users',
-            created_at: knex.fn.now()
-        },
-        {
-            id: 3,
-            organization_id: org.id,
-            username: 'user',
-            email: 'user@acme.com',
-            password_hash: passwordHash,
-            first_name: 'Normal',
-            last_name: 'User',
-            status: 'active',
-            default_landing_page: '/rbac/profile',
-            created_at: knex.fn.now()
-        }
-    ]).returning('*');
-
-    console.log('✓ Users created:', users.length);
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // PART 3: Roles (Hierarchical)
-    // ═══════════════════════════════════════════════════════════════════════
-    const roles = await knex('roles').insert([
-        {
-            id: 1,
-            organization_id: org.id,
-            name: 'Super Administrator',
+            name: 'Super Admin',
             code: 'SUPER_ADMIN',
-            description: 'Root role with full system access',
+            description: 'System Root',
             parent_role_id: null,
             is_active: true,
-            created_at: knex.fn.now(),
-            created_by: 1
+            created_by: users[0].id
         },
         {
             id: 2,
             organization_id: org.id,
             name: 'Administrator',
             code: 'ADMIN',
-            description: 'Administrative role with elevated privileges',
+            description: 'Organization Admin',
             parent_role_id: 1,
             is_active: true,
-            created_at: knex.fn.now(),
-            created_by: 1
+            created_by: users[0].id
         },
         {
             id: 3,
             organization_id: org.id,
             name: 'User',
             code: 'USER',
-            description: 'Standard user role',
+            description: 'Standard User',
             parent_role_id: 2,
             is_active: true,
-            created_at: knex.fn.now(),
-            created_by: 1
+            created_by: users[0].id
         }
-    ]).returning('*');
-
-    console.log('✓ Roles created:', roles.length);
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // PART 4: User Role Assignments
-    // ═══════════════════════════════════════════════════════════════════════
-    await knex('user_roles').insert([
-        { organization_id: org.id, user_id: 1, role_id: 1, assigned_at: knex.fn.now(), assigned_by: 1 },
-        { organization_id: org.id, user_id: 2, role_id: 2, assigned_at: knex.fn.now(), assigned_by: 1 },
-        { organization_id: org.id, user_id: 3, role_id: 3, assigned_at: knex.fn.now(), assigned_by: 1 }
     ]);
 
-    console.log('✓ User roles assigned');
+    console.log('✓ Roles created');
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // PART 5: Module - SETTINGS ONLY (Single Admin Entry Point)
-    // ═══════════════════════════════════════════════════════════════════════
-    const [settingsModule] = await knex('modules').insert([
-        {
-            id: 1,
-            organization_id: org.id,
-            name: 'Settings',
-            code: 'SETTINGS',
-            description: 'System settings and administration',
-            is_active: true,
-            sort_order: 1
-        }
-    ]).returning('*');
+    await knex('user_roles').insert([
+        { organization_id: org.id, user_id: 1, role_id: 1, assigned_by: users[0].id },
+        { organization_id: org.id, user_id: 2, role_id: 2, assigned_by: users[0].id },
+        { organization_id: org.id, user_id: 3, role_id: 3, assigned_by: users[0].id }
+    ]);
 
-    console.log('✓ Module created: SETTINGS');
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // PART 6: Permissions (SETTINGS sub-capabilities)
-    // ═══════════════════════════════════════════════════════════════════════
-    const permissionActions = [
-        { action: 'read', description: 'View Settings module' },
-        { action: 'manage_users', description: 'Create, update, delete users' },
-        { action: 'manage_roles', description: 'Create, update, delete roles' },
-        { action: 'manage_profiles', description: 'Create, update, delete profiles' },
-        { action: 'manage_groups', description: 'Create, update, delete groups' },
-        { action: 'manage_sharing', description: 'Configure sharing rules' },
-        { action: 'manage_smtp', description: 'Configure SMTP settings' },
-        { action: 'view_audit', description: 'View audit logs' },
-        { action: 'export_audit', description: 'Export audit logs' }
+    // ─────────────────────────────────────────────────────────────
+    // 5. MODULES (Granular resources for Permission granularity)
+    // ─────────────────────────────────────────────────────────────
+    const modulesList = [
+        { id: 2, name: 'Users', code: 'USERS', description: 'User Management' },
+        { id: 3, name: 'Roles', code: 'ROLES', description: 'Role Management' },
+        { id: 4, name: 'Profiles', code: 'PROFILES', description: 'Profile Management' },
+        { id: 5, name: 'Groups', code: 'GROUPS', description: 'Group Management' },
+        { id: 6, name: 'Sharing Rules', code: 'SHARING', description: 'Record Sharing Configuration' },
+        { id: 7, name: 'Audit Logs', code: 'AUDIT', description: 'System Audit Logs' },
+        { id: 8, name: 'SMTP Config', code: 'SMTP_CONFIG', description: 'Email Server Configuration' }
     ];
 
-    const permissions = permissionActions.map(p => ({
+    const modules = await knex('modules')
+        .insert(
+            modulesList.map(m => ({
+                ...m,
+                organization_id: org.id,
+                is_active: true
+            }))
+        )
+        .returning('*');
+
+    console.log('✓ Modules created');
+
+    // ─────────────────────────────────────────────────────────────
+    // 6. PERMISSIONS
+    // ─────────────────────────────────────────────────────────────
+    // Standard Actions: create, read, update, delete, export
+    const allActions = ['create', 'read', 'update', 'delete', 'export'];
+    const viewOnly = ['read', 'export'];
+    const readOnly = ['read'];
+
+    const permissionInserts = [];
+
+    // Helper to map modules to actions
+    const getModId = (code) => modules.find(m => m.code === code).id;
+
+    // Define Policy:
+
+    // Users: Full CRUD
+    allActions.forEach(action => permissionInserts.push({ organization_id: org.id, module_id: getModId('USERS'), action, is_active: true }));
+
+    // Roles: Full CRUD
+    allActions.forEach(action => permissionInserts.push({ organization_id: org.id, module_id: getModId('ROLES'), action, is_active: true }));
+
+    // Profiles: Full CRUD
+    allActions.forEach(action => permissionInserts.push({ organization_id: org.id, module_id: getModId('PROFILES'), action, is_active: true }));
+
+    // Groups: Full CRUD
+    allActions.forEach(action => permissionInserts.push({ organization_id: org.id, module_id: getModId('GROUPS'), action, is_active: true }));
+
+    // Sharing: Full CRUD
+    allActions.forEach(action => permissionInserts.push({ organization_id: org.id, module_id: getModId('SHARING'), action, is_active: true }));
+
+    // Audit: View/Export Only (Audit logs are immutable)
+    viewOnly.forEach(action => permissionInserts.push({ organization_id: org.id, module_id: getModId('AUDIT'), action, is_active: true }));
+
+    // SMTP: Full CRUD
+    allActions.forEach(action => permissionInserts.push({ organization_id: org.id, module_id: getModId('SMTP_CONFIG'), action, is_active: true }));
+
+    const permissions = await knex('permissions').insert(permissionInserts).returning('*');
+
+    console.log('✓ Permissions created:', permissions.length);
+
+    // ─────────────────────────────────────────────────────────────
+    // 7. PROFILES
+    // ─────────────────────────────────────────────────────────────
+    await knex('profiles').insert([
+        { id: 1, organization_id: org.id, name: 'Admin Profile', code: 'ADMIN_PROFILE', is_active: true, created_by: users[0].id },
+        { id: 2, organization_id: org.id, name: 'Standard Profile', code: 'USER_PROFILE', is_active: true, created_by: users[0].id }
+    ]);
+
+    // ─────────────────────────────────────────────────────────────
+    // 8. PROFILE ↔ PERMISSIONS
+    // ─────────────────────────────────────────────────────────────
+
+    // ADMIN_PROFILE: Get EVERYTHING
+    const adminPerms = permissions.map(p => ({
         organization_id: org.id,
-        module_id: settingsModule.id,
-        action: p.action,
-        description: p.description,
-        is_active: true
+        profile_id: 1,
+        permission_id: p.id,
+        effect: 'allow'
     }));
 
-    const insertedPermissions = await knex('permissions').insert(permissions).returning('*');
-    console.log('✓ Permissions created:', insertedPermissions.length);
+    // USER_PROFILE: Minimal Access (e.g. Read Users, Read Settings?)
+    // For safety, start empty (deny all). User can assign later.
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // PART 7: Profiles
-    // ═══════════════════════════════════════════════════════════════════════
-    const profiles = await knex('profiles').insert([
-        {
-            id: 1,
-            organization_id: org.id,
-            name: 'Admin Profile',
-            code: 'ADMIN_PROFILE',
-            description: 'Full administrative access to SETTINGS',
-            is_active: true,
-            created_at: knex.fn.now(),
-            created_by: 1
-        },
-        {
-            id: 2,
-            organization_id: org.id,
-            name: 'User Profile',
-            code: 'USER_PROFILE',
-            description: 'Standard user access (no SETTINGS)',
-            is_active: true,
-            created_at: knex.fn.now(),
-            created_by: 1
-        }
-    ]).returning('*');
+    await knex('profile_permissions').insert(adminPerms);
 
-    console.log('✓ Profiles created:', profiles.length);
+    console.log('✓ Profile permissions assigned');
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // PART 8: Profile Permissions
-    // ═══════════════════════════════════════════════════════════════════════
-    const profilePermissions = [];
-
-    // ADMIN_PROFILE: Full access to all SETTINGS sub-capabilities
-    for (const permission of insertedPermissions) {
-        profilePermissions.push({
-            organization_id: org.id,
-            profile_id: 1, // ADMIN_PROFILE
-            permission_id: permission.id,
-            effect: 'allow'
-        });
-    }
-
-    // USER_PROFILE: NO access to SETTINGS (deny-by-default, no entries needed)
-    // Empty - no permissions for USER_PROFILE on SETTINGS
-
-    await knex('profile_permissions').insert(profilePermissions);
-    console.log('✓ Profile permissions assigned:', profilePermissions.length);
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // PART 9: Role Profile Assignments
-    // ═══════════════════════════════════════════════════════════════════════
+    // Link Roles to Profiles
     await knex('role_profiles').insert([
-        { organization_id: org.id, role_id: 1, profile_id: 1, assigned_at: knex.fn.now(), assigned_by: 1 },
-        { organization_id: org.id, role_id: 2, profile_id: 1, assigned_at: knex.fn.now(), assigned_by: 1 },
-        { organization_id: org.id, role_id: 3, profile_id: 2, assigned_at: knex.fn.now(), assigned_by: 1 }
+        { organization_id: org.id, role_id: 1, profile_id: 1, assigned_by: users[0].id }, // Super -> Admin
+        { organization_id: org.id, role_id: 2, profile_id: 1, assigned_by: users[0].id }, // Admin -> Admin
+        { organization_id: org.id, role_id: 3, profile_id: 2, assigned_by: users[0].id }  // User -> User
     ]);
 
-    console.log('✓ Role profiles assigned');
+    // ─────────────────────────────────────────────────────────────
+    // 9. GROUPS
+    // ─────────────────────────────────────────────────────────────
+    await knex('groups').insert([
+        { id: 1, organization_id: org.id, name: 'All Users', code: 'ALL_USERS', is_active: true, created_by: users[0].id }
+    ]);
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // PART 10: Groups (Cross-Organization Capable)
-    // ═══════════════════════════════════════════════════════════════════════
-    const groups = await knex('groups').insert([
-        {
-            id: 1,
-            organization_id: org.id,
-            name: 'Global Administrators',
-            code: 'GLOBAL_ADMINS',
-            description: 'Cross-organization administrative group',
-            is_active: true,
-            created_at: knex.fn.now(),
-            created_by: 1
-        }
-    ]).returning('*');
-
-    console.log('✓ Groups created:', groups.length);
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // PART 11: User Group Assignments
-    // ═══════════════════════════════════════════════════════════════════════
     await knex('user_groups').insert([
-        { organization_id: org.id, user_id: 1, group_id: 1, assigned_at: knex.fn.now(), assigned_by: 1 },
-        { organization_id: org.id, user_id: 2, group_id: 1, assigned_at: knex.fn.now(), assigned_by: 1 }
+        { organization_id: org.id, user_id: 1, group_id: 1, assigned_by: users[0].id },
+        { organization_id: org.id, user_id: 2, group_id: 1, assigned_by: users[0].id },
+        { organization_id: org.id, user_id: 3, group_id: 1, assigned_by: users[0].id }
     ]);
 
-    console.log('✓ User groups assigned');
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // PART 12: Audit Logs
-    // ═══════════════════════════════════════════════════════════════════════
-    await knex('audit_logs').insert([
-        {
-            organization_id: org.id,
-            user_id: 1,
-            role_id: 1,
-            action: 'create',
-            module_id: 1,
-            entity_type: 'user_role',
-            entity_id: 1,
-            old_values: null,
-            new_values: JSON.stringify({ user_id: 1, role_id: 1 }),
-            ip_address: '127.0.0.1',
-            user_agent: 'Seed Script',
-            status: 'success',
-            created_at: knex.fn.now()
-        }
-    ]);
-
-    console.log('✓ Audit logs created');
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // SUMMARY
-    // ═══════════════════════════════════════════════════════════════════════
-    console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('✓ RBAC SEED DATA COMPLETE');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('ARCHITECTURE: SETTINGS is the ONLY admin module');
-    console.log('SUB-CAPABILITIES: manage_users, manage_roles, manage_profiles, etc.');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('LOGIN CREDENTIALS:');
-    console.log('  superadmin@acme.com / Password@123 → Full SETTINGS access');
-    console.log('  admin@acme.com / Password@123 → Full SETTINGS access');
-    console.log('  user@acme.com / Password@123 → NO SETTINGS access');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+    console.log('✓ Seed Complete');
 };

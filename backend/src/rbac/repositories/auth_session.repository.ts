@@ -14,7 +14,7 @@ export interface IAuthSessionRepository {
 }
 
 export class AuthSessionRepository extends BaseRepository<AuthSession> implements IAuthSessionRepository {
-    constructor(pool: Pool) {
+    constructor(pool: InstanceType<typeof Pool>) {
         super(pool, 'auth_sessions');
     }
 

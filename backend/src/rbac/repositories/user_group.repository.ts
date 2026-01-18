@@ -19,7 +19,7 @@ export interface IUserGroupRepository {
 }
 
 export class UserGroupRepository extends BaseRepository<UserGroup> implements IUserGroupRepository {
-    constructor(pool: Pool) {
+    constructor(pool: InstanceType<typeof Pool>) {
         super(pool, 'user_groups');
     }
 

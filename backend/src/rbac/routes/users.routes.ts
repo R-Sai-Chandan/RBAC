@@ -13,11 +13,8 @@ export function createUsersRouter(
 ): Router {
     const router = Router();
 
-    // SETTINGS:manage_users permission for all user management routes
-    const check = () => requirePermission('SETTINGS', 'manage_users', evaluationService, auditService);
-
-    // List Users
-    router.get('/', check(), async (req: Request, res: Response) => {
+    // List Users -> READ
+    router.get('/', requirePermission('USERS', 'read', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
             const users = await userService.list(req.user!.organizationId, req.query);
             res.json({ data: users });
@@ -27,8 +24,8 @@ export function createUsersRouter(
         }
     });
 
-    // Create User
-    router.post('/', check(), async (req: Request, res: Response) => {
+    // Create User -> CREATE
+    router.post('/', requirePermission('USERS', 'create', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
             const user = await userService.create(req.user!.organizationId, req.body);
             res.status(201).json({ data: user });
@@ -38,8 +35,8 @@ export function createUsersRouter(
         }
     });
 
-    // Get User
-    router.get('/:id', check(), async (req: Request, res: Response) => {
+    // Get User -> READ
+    router.get('/:id', requirePermission('USERS', 'read', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
             const id = getRequiredParam(req.params, 'id');
             const user = await userService.getById(req.user!.organizationId, id);
@@ -54,8 +51,8 @@ export function createUsersRouter(
         }
     });
 
-    // Update User
-    router.patch('/:id', check(), async (req: Request, res: Response) => {
+    // Update User -> UPDATE
+    router.patch('/:id', requirePermission('USERS', 'update', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
             const id = getRequiredParam(req.params, 'id');
             const user = await userService.update(req.user!.organizationId, id, req.body);
@@ -66,8 +63,8 @@ export function createUsersRouter(
         }
     });
 
-    // Delete User (Soft Delete)
-    router.delete('/:id', check(), async (req: Request, res: Response) => {
+    // Delete User -> DELETE
+    router.delete('/:id', requirePermission('USERS', 'delete', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
             const id = getRequiredParam(req.params, 'id');
             await userService.delete(req.user!.organizationId, id);

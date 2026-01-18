@@ -1,11 +1,20 @@
 
-import { Pool, QueryResult } from 'pg';
+import { Pool } from 'pg';
+
+export interface PgQueryResult<R = any> {
+    rows: R[];
+    command: string;
+    rowCount: number | null;
+    oid: number;
+    fields: any[];
+}
 
 export abstract class BaseRepository<T> {
-    constructor(protected pool: Pool, protected tableName: string) { }
+    constructor(protected pool: InstanceType<typeof Pool>, protected tableName: string) { }
 
-    protected async query(text: string, params?: unknown[]): Promise<QueryResult<T>> {
-        return this.pool.query(text, params);
+    protected async query(text: string, params?: unknown[]): Promise<PgQueryResult<T>> {
+        const result = await this.pool.query(text, params);
+        return result as PgQueryResult<T>;
     }
 
     async findById(organizationId: string, id: string): Promise<T | null> {

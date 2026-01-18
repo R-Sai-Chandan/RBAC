@@ -16,7 +16,7 @@ export interface IRecordShareRepository {
 }
 
 export class RecordShareRepository extends BaseRepository<RecordShare> implements IRecordShareRepository {
-    constructor(pool: Pool) {
+    constructor(pool: InstanceType<typeof Pool>) {
         super(pool, 'record_shares');
     }
 

@@ -18,11 +18,6 @@ export function createAuditLogsRouter(
 ): Router {
     const router = Router();
 
-    // SETTINGS:view_audit permission for viewing audit logs
-    const checkView = () => requirePermission('SETTINGS', 'view_audit', evaluationService, auditService);
-    // SETTINGS:export_audit permission for exporting audit logs
-    const checkExport = () => requirePermission('SETTINGS', 'export_audit', evaluationService, auditService);
-
     // Helper to validate and convert action string to AuditAction enum
     function toAuditAction(action: string): AuditAction | null {
         const normalized = action.toLowerCase();
@@ -32,8 +27,8 @@ export function createAuditLogsRouter(
         return null;
     }
 
-    // GET /audit-logs
-    router.get('/', checkView(), async (req: Request, res: Response) => {
+    // GET /audit-logs -> READ
+    router.get('/', requirePermission('AUDIT', 'read', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
             if (!req.user || !req.user.organizationId) {
                 res.status(401).json({ error: 'Unauthorized' });
@@ -97,9 +92,9 @@ export function createAuditLogsRouter(
         }
     });
 
-    // GET /audit-logs/export - Export audit logs (CSV format)
+    // GET /audit-logs/export - Export audit logs (CSV format) -> EXPORT
     // NOTE: Must be defined BEFORE /:id to avoid route conflict
-    router.get('/export', checkExport(), async (req: Request, res: Response) => {
+    router.get('/export', requirePermission('AUDIT', 'export', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
             if (!req.user || !req.user.organizationId) {
                 res.status(401).json({ error: 'Unauthorized' });
@@ -142,8 +137,8 @@ export function createAuditLogsRouter(
         }
     });
 
-    // GET /audit-logs/:id
-    router.get('/:id', checkView(), async (req: Request, res: Response) => {
+    // GET /audit-logs/:id -> READ
+    router.get('/:id', requirePermission('AUDIT', 'read', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
             if (!req.user || !req.user.organizationId) {
                 res.status(401).json({ error: 'Unauthorized' });

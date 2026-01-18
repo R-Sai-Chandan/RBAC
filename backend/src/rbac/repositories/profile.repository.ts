@@ -14,7 +14,7 @@ export interface IProfileRepository {
 }
 
 export class ProfileRepository extends BaseRepository<Profile> implements IProfileRepository {
-    constructor(pool: Pool) {
+    constructor(pool: InstanceType<typeof Pool>) {
         super(pool, 'profiles');
     }
 

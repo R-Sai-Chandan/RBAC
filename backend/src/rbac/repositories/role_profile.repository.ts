@@ -13,7 +13,7 @@ export interface IRoleProfileRepository {
 }
 
 export class RoleProfileRepository extends BaseRepository<RoleProfile> implements IRoleProfileRepository {
-    constructor(pool: Pool) {
+    constructor(pool: InstanceType<typeof Pool>) {
         super(pool, 'role_profiles');
     }
 
@@ -48,7 +48,7 @@ export class RoleProfileRepository extends BaseRepository<RoleProfile> implement
             RETURNING *
         `;
         const res = await this.query(query, [organizationId, roleId, profileId, assignedBy]);
-        return res.rows[0];
+        return res.rows[0]!;
     }
 
     async revoke(organizationId: string, roleId: string, profileId: string): Promise<void> {

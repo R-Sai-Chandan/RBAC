@@ -10,27 +10,17 @@ interface User {
 
 interface AuthContextType {
     user: User | null;
-    organizationId: string | null;
-    login: (orgId: string, identifier: string, password: string) => Promise<void>;
+    login: (identifier: string, password: string) => Promise<void>;
     logout: () => Promise<void>;
     isAuthenticated: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-/**
- * AuthProvider - Manages authentication state
- * Session ID is handled via HTTP-only cookies (not accessible to JS).
- * Only user context is stored in localStorage for UI purposes.
- */
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
-    const [organizationId, setOrganizationId] = useState<string | null>(
-        localStorage.getItem('organizationId')
-    );
 
     useEffect(() => {
-        // On mount, restore user from localStorage if available
         const storedUser = localStorage.getItem('user');
         if (storedUser) {
             try {
@@ -41,30 +31,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     }, []);
 
-    const login = async (orgId: string, identifier: string, password: string) => {
-        // Store org ID for API interceptor before making request
-        localStorage.setItem('organizationId', orgId);
-        setOrganizationId(orgId);
+    const login = async (identifier: string, password: string) => {
+        const response = await api.post('/auth/login', {
+            identifier,
+            password,
+        });
 
-        try {
-            const response = await api.post('/auth/login', {
-                organizationId: orgId,
-                identifier,
-                password,
-            });
-
-            // Session ID is now in HTTP-only cookie
-            // Only store user context for UI
-            const { user: newUser } = response.data.data;
-
-            localStorage.setItem('user', JSON.stringify(newUser));
-            setUser(newUser);
-        } catch (error) {
-            // Clear on failure
-            localStorage.removeItem('organizationId');
-            setOrganizationId(null);
-            throw error;
-        }
+        const { user: newUser } = response.data.data;
+        localStorage.setItem('user', JSON.stringify(newUser));
+        setUser(newUser);
     };
 
     const logout = async () => {
@@ -73,9 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } catch (e) {
             console.error('Logout request failed:', e);
         } finally {
-            localStorage.removeItem('organizationId');
             localStorage.removeItem('user');
-            setOrganizationId(null);
             setUser(null);
         }
     };
@@ -83,7 +56,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return (
         <AuthContext.Provider value={{
             user,
-            organizationId,
             login,
             logout,
             isAuthenticated: !!user

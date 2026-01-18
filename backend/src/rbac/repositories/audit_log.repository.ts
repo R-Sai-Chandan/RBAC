@@ -14,7 +14,7 @@ export interface IAuditLogRepository {
 }
 
 export class AuditLogRepository extends BaseRepository<AuditLog> implements IAuditLogRepository {
-    constructor(pool: Pool) {
+    constructor(pool: InstanceType<typeof Pool>) {
         super(pool, 'audit_logs');
     }
 

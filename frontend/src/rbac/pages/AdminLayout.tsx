@@ -21,11 +21,6 @@ interface NavModule {
     children: NavChild[];
 }
 
-/**
- * AdminLayout - Main layout for authenticated users
- * Sidebar is built ONLY from /rbac/me/navigation (backend-provided)
- * No hardcoded admin paths.
- */
 export default function AdminLayout() {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
@@ -58,7 +53,7 @@ export default function AdminLayout() {
 
     if (loading) {
         return (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+            <div className="loading-container">
                 <div>Loading...</div>
             </div>
         );
@@ -66,7 +61,7 @@ export default function AdminLayout() {
 
     if (error) {
         return (
-            <div style={{ padding: '20px', color: 'red' }}>
+            <div className="error-container">
                 {error}
                 <button onClick={handleLogout} style={{ marginLeft: '10px' }}>Logout</button>
             </div>
@@ -74,106 +69,51 @@ export default function AdminLayout() {
     }
 
     return (
-        <div style={{ display: 'flex', height: '100vh', flexDirection: 'column' }}>
-            {/* Header */}
-            <header style={{
-                padding: '12px 20px',
-                background: '#1a1a2e',
-                color: '#fff',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-            }}>
-                <div style={{ fontWeight: 'bold', fontSize: '18px' }}>RBAC System</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                    <Link to="/rbac/profile" style={{ color: '#fff', textDecoration: 'none' }}>
+        <div className="admin-container">
+            <header className="admin-header">
+                <div className="admin-header__title">RBAC System</div>
+                <div className="admin-header__actions">
+                    <Link to="/rbac/profile" className="admin-header__link">
                         {user?.fullName || user?.username || 'User'}
                     </Link>
-                    <button
-                        onClick={handleLogout}
-                        style={{
-                            padding: '6px 12px',
-                            background: '#e94560',
-                            color: '#fff',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer'
-                        }}
-                    >
+                    <button onClick={handleLogout} className="btn btn--danger">
                         Logout
                     </button>
                 </div>
             </header>
 
-            <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-                {/* Sidebar - Built from backend navigation ONLY */}
-                <aside style={{
-                    width: '250px',
-                    background: '#16213e',
-                    padding: '15px',
-                    overflowY: 'auto'
-                }}>
+            <div className="admin-body">
+                <aside className="admin-sidebar">
                     <nav>
-                        {/* Profile Link (always visible for authenticated users) */}
-                        <div style={{ marginBottom: '20px' }}>
+                        <div className="admin-sidebar__profile">
                             <Link
                                 to="/rbac/profile"
-                                style={{
-                                    color: location.pathname === '/rbac/profile' ? '#e94560' : '#ccc',
-                                    textDecoration: 'none',
-                                    display: 'block',
-                                    padding: '8px 10px',
-                                    borderRadius: '4px',
-                                    background: location.pathname === '/rbac/profile' ? 'rgba(233, 69, 96, 0.1)' : 'transparent'
-                                }}
+                                className={`admin-sidebar__link ${location.pathname === '/rbac/profile' ? 'admin-sidebar__link--active' : ''}`}
                             >
                                 My Profile
                             </Link>
                         </div>
 
-                        {/* Dynamic Navigation from Backend */}
                         {navModules.map(module => (
-                            <div key={module.code} style={{ marginBottom: '15px' }}>
-                                <div style={{
-                                    color: '#fff',
-                                    fontWeight: 'bold',
-                                    fontSize: '14px',
-                                    padding: '8px 10px',
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.5px'
-                                }}>
+                            <div key={module.code} className="admin-sidebar__nav-section">
+                                <div className="admin-sidebar__nav-header">
                                     {module.label}
                                 </div>
 
-                                {/* Sub-sections */}
                                 {module.children && module.children.map(child => (
                                     <Link
                                         key={child.code}
                                         to={child.route}
-                                        style={{
-                                            color: location.pathname === child.route ? '#e94560' : '#aaa',
-                                            textDecoration: 'none',
-                                            display: 'block',
-                                            padding: '8px 10px 8px 20px',
-                                            borderRadius: '4px',
-                                            background: location.pathname === child.route ? 'rgba(233, 69, 96, 0.1)' : 'transparent',
-                                            fontSize: '13px'
-                                        }}
+                                        className={`admin-sidebar__link admin-sidebar__link--nested ${location.pathname === child.route ? 'admin-sidebar__link--active' : ''}`}
                                     >
                                         {child.label}
                                     </Link>
                                 ))}
 
-                                {/* If no children, show module link directly */}
                                 {(!module.children || module.children.length === 0) && (
                                     <Link
                                         to={module.route}
-                                        style={{
-                                            color: location.pathname === module.route ? '#e94560' : '#aaa',
-                                            textDecoration: 'none',
-                                            display: 'block',
-                                            padding: '8px 10px 8px 20px'
-                                        }}
+                                        className={`admin-sidebar__link admin-sidebar__link--nested ${location.pathname === module.route ? 'admin-sidebar__link--active' : ''}`}
                                     >
                                         {module.label}
                                     </Link>
@@ -183,13 +123,7 @@ export default function AdminLayout() {
                     </nav>
                 </aside>
 
-                {/* Main Content */}
-                <main style={{
-                    flex: 1,
-                    padding: '20px',
-                    overflowY: 'auto',
-                    background: '#f5f5f5'
-                }}>
+                <main className="admin-main">
                     <Outlet />
                 </main>
             </div>

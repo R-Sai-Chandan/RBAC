@@ -19,11 +19,8 @@ export function createGroupsRouter(
 ): Router {
     const router = Router();
 
-    // SETTINGS:manage_groups permission for all group management routes
-    const check = () => requirePermission('SETTINGS', 'manage_groups', evaluationService, auditService);
-
-    // GET /groups
-    router.get('/', check(), async (req: Request, res: Response) => {
+    // GET /groups -> READ
+    router.get('/', requirePermission('GROUPS', 'read', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
             if (!req.user || !req.user.organizationId) {
                 res.status(401).json({ error: 'Unauthorized' });
@@ -37,8 +34,8 @@ export function createGroupsRouter(
         }
     });
 
-    // GET /groups/:id
-    router.get('/:id', check(), async (req: Request, res: Response) => {
+    // GET /groups/:id -> READ
+    router.get('/:id', requirePermission('GROUPS', 'read', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
             if (!req.user || !req.user.organizationId) {
                 res.status(401).json({ error: 'Unauthorized' });
@@ -53,8 +50,8 @@ export function createGroupsRouter(
         }
     });
 
-    // POST /groups
-    router.post('/', check(), async (req: Request, res: Response) => {
+    // POST /groups -> CREATE
+    router.post('/', requirePermission('GROUPS', 'create', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
             if (!req.user || !req.user.organizationId || !req.user.id) {
                 res.status(401).json({ error: 'Unauthorized' });
@@ -68,8 +65,8 @@ export function createGroupsRouter(
         }
     });
 
-    // PATCH /groups/:id
-    router.patch('/:id', check(), async (req: Request, res: Response) => {
+    // PATCH /groups/:id -> UPDATE
+    router.patch('/:id', requirePermission('GROUPS', 'update', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
             if (!req.user || !req.user.organizationId || !req.user.id) {
                 res.status(401).json({ error: 'Unauthorized' });
@@ -84,8 +81,8 @@ export function createGroupsRouter(
         }
     });
 
-    // DELETE /groups/:id
-    router.delete('/:id', check(), async (req: Request, res: Response) => {
+    // DELETE /groups/:id -> DELETE
+    router.delete('/:id', requirePermission('GROUPS', 'delete', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
             if (!req.user || !req.user.organizationId || !req.user.id) {
                 res.status(401).json({ error: 'Unauthorized' });
@@ -100,8 +97,8 @@ export function createGroupsRouter(
         }
     });
 
-    // POST /groups/:id/users - Add user to group
-    router.post('/:id/users', check(), async (req: Request, res: Response) => {
+    // POST /groups/:id/users - Add user to group -> UPDATE (Group membership)
+    router.post('/:id/users', requirePermission('GROUPS', 'update', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
             if (!req.user || !req.user.organizationId || !req.user.id) {
                 res.status(401).json({ error: 'Unauthorized' });
@@ -121,8 +118,8 @@ export function createGroupsRouter(
         }
     });
 
-    // DELETE /groups/:id/users/:userId - Remove user from group
-    router.delete('/:id/users/:userId', check(), async (req: Request, res: Response) => {
+    // DELETE /groups/:id/users/:userId - Remove user from group -> UPDATE (Group membership)
+    router.delete('/:id/users/:userId', requirePermission('GROUPS', 'update', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
             if (!req.user || !req.user.organizationId || !req.user.id) {
                 res.status(401).json({ error: 'Unauthorized' });

@@ -67,29 +67,28 @@ export function createRBACRouter(deps: RBACRouterDeps): Router {
     router.use('/me', createMeRouter(deps.userRepository, deps.userRoleRepository, deps.evaluationService));
 
     // ═══════════════════════════════════════════════════════════════════════
-    // ADMIN ROUTES (Auth + SETTINGS permissions required)
-    // All admin functionality is under SETTINGS module with sub-capabilities
+    // ADMIN ROUTES (Auth + Module permissions required)
     // ═══════════════════════════════════════════════════════════════════════
 
-    // SETTINGS:manage_users
+    // USERS module
     router.use('/users', createUsersRouter(deps.userService, deps.evaluationService, deps.auditService));
 
-    // SETTINGS:manage_roles
+    // ROLES module
     router.use('/roles', createRolesRouter(deps.roleService, deps.evaluationService, deps.auditService));
 
-    // SETTINGS:manage_profiles
+    // PROFILES module
     router.use('/profiles', createProfilesRouter(deps.profileService, deps.evaluationService, deps.auditService));
 
-    // SETTINGS:manage_groups
+    // GROUPS module
     router.use('/groups', createGroupsRouter(deps.groupService, deps.evaluationService, deps.auditService));
 
-    // SETTINGS:manage_sharing
+    // SHARING module
     router.use('/sharing-rules', createSharingRulesRouter(deps.sharingRuleService, deps.evaluationService, deps.auditService));
 
-    // SETTINGS:manage_smtp
+    // SMTP_CONFIG module
     router.use('/smtp-config', createSmtpConfigRouter(deps.smtpConfigService, deps.evaluationService, deps.auditService));
 
-    // SETTINGS:view_audit
+    // AUDIT module
     router.use('/audit-logs', createAuditLogsRouter(deps.auditService, deps.evaluationService));
 
     return router;

@@ -12,7 +12,7 @@ export default function UsersPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<any | null>(null);
     const [formData, setFormData] = useState({ username: '', email: '', firstName: '', lastName: '', roleIds: [] as string[] });
-    const [filterStatus, setFilterStatus] = useState('active'); // active | inactive
+    const [filterStatus, setFilterStatus] = useState('active');
 
     useEffect(() => {
         fetchUsers();
@@ -21,8 +21,8 @@ export default function UsersPage() {
 
     const fetchUsers = () => {
         setLoading(true);
-        api.get(`/users?status=${filterStatus}`) // Assuming backend supports filter
-            .then(res => setUsers(res.data.data || [])) // Safety check
+        api.get(`/users?status=${filterStatus}`)
+            .then(res => setUsers(res.data.data || []))
             .catch(console.error)
             .finally(() => setLoading(false));
     };
@@ -69,13 +69,11 @@ export default function UsersPage() {
 
     const openEdit = (user: any) => {
         setEditingUser(user);
-        // Assuming user object has roles array of objects or IDs. 
-        // If API returns roles array, we map to IDs.
         const currentRoleIds = user.roles ? user.roles.map((r: any) => r.id || r) : [];
         setFormData({
             username: user.username,
             email: user.email,
-            firstName: user.first_name || '', // Map DB fields if needed
+            firstName: user.first_name || '',
             lastName: user.last_name || '',
             roleIds: currentRoleIds
         });
@@ -85,11 +83,11 @@ export default function UsersPage() {
     const columns = [
         { header: 'Username', accessor: 'username' },
         { header: 'Email', accessor: 'email' },
-        { header: 'Status', accessor: 'status' }, // Assuming status field exists
+        { header: 'Status', accessor: 'status' },
         {
             header: 'Actions',
             accessor: (row: any) => (
-                <div style={{ display: 'flex', gap: '8px' }}>
+                <div className="table__actions">
                     <Button variant="secondary" onClick={(e: any) => { e.stopPropagation(); openEdit(row); }}>Edit</Button>
                     {row.status === 'active' && <Button variant="danger" onClick={(e: any) => { e.stopPropagation(); handleDelete(row); }}>Deactivate</Button>}
                 </div>
@@ -99,17 +97,19 @@ export default function UsersPage() {
 
     return (
         <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <div className="page-header">
                 <h1>User Management</h1>
                 <Button onClick={openCreate}>Create User</Button>
             </div>
 
-            <div style={{ marginBottom: '10px' }}>
-                <label style={{ marginRight: '10px' }}>Filter Status:</label>
-                <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={{ padding: '5px' }}>
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                </select>
+            <div className="mb-10">
+                <label className="form-label">
+                    Filter Status:
+                    <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="form-select" style={{ marginLeft: '10px', width: 'auto' }}>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                    </select>
+                </label>
             </div>
 
             {loading ? <div>Loading...</div> : <Table columns={columns} data={users} />}
@@ -140,8 +140,8 @@ export default function UsersPage() {
                         onChange={(e: any) => setFormData({ ...formData, lastName: e.target.value })}
                     />
 
-                    <div style={{ marginBottom: '15px' }}>
-                        <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Roles</label>
+                    <div className="form-group">
+                        <label className="form-label">Roles</label>
                         <select
                             multiple
                             value={formData.roleIds}
@@ -149,16 +149,16 @@ export default function UsersPage() {
                                 const selected = Array.from(e.target.selectedOptions, option => option.value);
                                 setFormData({ ...formData, roleIds: selected });
                             }}
-                            style={{ width: '100%', padding: '8px', height: '100px' }}
+                            className="form-select form-select--multiple"
                         >
                             {roles.map((r: any) => (
                                 <option key={r.id} value={r.id}>{r.name}</option>
                             ))}
                         </select>
-                        <small style={{ color: '#666' }}>Hold Ctrl to select multiple</small>
+                        <small className="form-help">Hold Ctrl to select multiple</small>
                     </div>
 
-                    <div style={{ textAlign: 'right', marginTop: '20px' }}>
+                    <div className="form-actions">
                         <Button type="submit">Save User</Button>
                     </div>
                 </form>

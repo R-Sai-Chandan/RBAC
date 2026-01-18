@@ -15,7 +15,7 @@ export interface IRoleRepository {
 }
 
 export class RoleRepository extends BaseRepository<Role> implements IRoleRepository {
-    constructor(pool: Pool) {
+    constructor(pool: InstanceType<typeof Pool>) {
         super(pool, 'roles');
     }
 

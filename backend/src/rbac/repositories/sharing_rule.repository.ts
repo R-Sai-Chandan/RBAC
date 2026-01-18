@@ -15,7 +15,7 @@ export interface ISharingRuleRepository {
 }
 
 export class SharingRuleRepository extends BaseRepository<SharingRule> implements ISharingRuleRepository {
-    constructor(pool: Pool) {
+    constructor(pool: InstanceType<typeof Pool>) {
         super(pool, 'sharing_rules');
     }
 

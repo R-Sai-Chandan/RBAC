@@ -13,7 +13,7 @@ export interface ISmtpConfigRepository {
 }
 
 export class SmtpConfigRepository extends BaseRepository<SmtpConfig> implements ISmtpConfigRepository {
-    constructor(pool: Pool) {
+    constructor(pool: InstanceType<typeof Pool>) {
         super(pool, 'smtp_configs');
     }
 

@@ -19,11 +19,8 @@ export function createSharingRulesRouter(
 ): Router {
     const router = Router();
 
-    // SETTINGS:manage_sharing permission for all sharing rule routes
-    const check = () => requirePermission('SETTINGS', 'manage_sharing', evaluationService, auditService);
-
-    // GET /sharing-rules
-    router.get('/', check(), async (req: Request, res: Response) => {
+    // GET /sharing-rules -> READ
+    router.get('/', requirePermission('SHARING', 'read', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
             if (!req.user || !req.user.organizationId) {
                 res.status(401).json({ error: 'Unauthorized' });
@@ -37,8 +34,8 @@ export function createSharingRulesRouter(
         }
     });
 
-    // GET /sharing-rules/:id
-    router.get('/:id', check(), async (req: Request, res: Response) => {
+    // GET /sharing-rules/:id -> READ
+    router.get('/:id', requirePermission('SHARING', 'read', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
             if (!req.user || !req.user.organizationId) {
                 res.status(401).json({ error: 'Unauthorized' });
@@ -53,8 +50,8 @@ export function createSharingRulesRouter(
         }
     });
 
-    // POST /sharing-rules
-    router.post('/', check(), async (req: Request, res: Response) => {
+    // POST /sharing-rules -> CREATE
+    router.post('/', requirePermission('SHARING', 'create', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
             if (!req.user || !req.user.organizationId || !req.user.id) {
                 res.status(401).json({ error: 'Unauthorized' });
@@ -68,8 +65,8 @@ export function createSharingRulesRouter(
         }
     });
 
-    // PATCH /sharing-rules/:id
-    router.patch('/:id', check(), async (req: Request, res: Response) => {
+    // PATCH /sharing-rules/:id -> UPDATE
+    router.patch('/:id', requirePermission('SHARING', 'update', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
             if (!req.user || !req.user.organizationId || !req.user.id) {
                 res.status(401).json({ error: 'Unauthorized' });
@@ -84,8 +81,8 @@ export function createSharingRulesRouter(
         }
     });
 
-    // DELETE /sharing-rules/:id
-    router.delete('/:id', check(), async (req: Request, res: Response) => {
+    // DELETE /sharing-rules/:id -> DELETE
+    router.delete('/:id', requirePermission('SHARING', 'delete', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
             if (!req.user || !req.user.organizationId || !req.user.id) {
                 res.status(401).json({ error: 'Unauthorized' });
