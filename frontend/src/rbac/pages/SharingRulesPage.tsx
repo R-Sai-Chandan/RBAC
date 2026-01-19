@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../api/api';
+import { usePermissions } from '../hooks/usePermissions';
 import { Table } from '../components/Table';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
@@ -11,6 +12,7 @@ export default function SharingRulesPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modules] = useState<string[]>(['USERS', 'ROLES', 'PROFILES', 'GROUPS', 'AUDIT_LOGS']); // Hardcoded or fetch
     const [formData, setFormData] = useState({ name: '', module_id: '', rule_type: 'OWNER', conditions: '{}' });
+    const { canCreate, canDelete } = usePermissions('SHARING');
 
     useEffect(() => {
         fetchRules();
@@ -56,7 +58,7 @@ export default function SharingRulesPage() {
         {
             header: 'Actions',
             accessor: (row: any) => (
-                <Button variant="danger" onClick={(e: any) => { e.stopPropagation(); handleDelete(row.id); }}>Delete</Button>
+                canDelete && <Button variant="danger" onClick={(e: any) => { e.stopPropagation(); handleDelete(row.id); }}>Delete</Button>
             )
         }
     ];
@@ -65,7 +67,7 @@ export default function SharingRulesPage() {
         <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                 <h1>Sharing Rules</h1>
-                <Button onClick={() => setIsModalOpen(true)}>Create Rule</Button>
+                {canCreate && <Button onClick={() => setIsModalOpen(true)}>Create Rule</Button>}
             </div>
 
             {loading ? <div>Loading...</div> : <Table columns={columns} data={rules} />}

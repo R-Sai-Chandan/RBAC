@@ -1,66 +1,38 @@
 /**
- * Authentication Middleware
+ * Authenticate Middleware
  * 
- * Verifies the presence and validity of an active session.
- * Hydrates req.user with RBAC context.
+ * SINGLE SOURCE OF TRUTH for Request Context.
  * 
- * Rules:
- * - Fail closed if no session ID provided
- * - Fail closed if session invalid/expired
- * - Fail closed if session not found
- * - Fail closed if Tenant Mismatch
+ * Responsibilities:
+ * 1. Read 'sessionId' cookie (HTTP Only)
+ * 2. Resolve Session via AuthSessionService (Global Lookup)
+ * 3. Populate req.user = { id, organizationId, sessionId }
+ * 4. Fail Closed on any error
  */
 
-import { Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { IAuthSessionService } from '../services/authSession.service';
-import { RBACRequest } from './requirePermission.middleware';
 
-/**
- * Factory for Authentication Middleware
- */
 export function createAuthenticateMiddleware(authSessionService: IAuthSessionService) {
-    return async (req: RBACRequest, res: Response, next: NextFunction) => {
+    return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
-            // 1. Strict Session ID Extraction using HTTP-Only Cookie
-            // Migration: Header -> Cookie
-            // Ensure cookies exist (cookie-parser required)
-            const sessionId = req.cookies ? req.cookies['sessionId'] : undefined;
+            // 1. Read Cookie
+            const sessionId = req.cookies['sessionId'];
 
             if (!sessionId) {
-                // FAIL-CLOSED
-                res.status(401).json({ error: 'Unauthorized', message: 'Authentication required (Cookie missing)' });
-                return;
-            }
-
-            // 2. Organization Context
-            const organizationId = req.headers['x-organization-id'] as string;
-            if (!organizationId) {
-                res.status(400).json({ error: 'Bad Request', message: 'X-Organization-ID header required' });
-                return;
-            }
-
-            // 3. Verify Validity
-            const isValid = await authSessionService.isValid(organizationId, sessionId);
-            if (!isValid) {
-                res.status(401).json({ error: 'Unauthorized', message: 'Session invalid or expired' });
-                return;
-            }
-
-            // 4. Get Session Details
-            const session = await authSessionService.getById(organizationId, sessionId);
-
-            // 5. Strict Tenant Isolation Check
-            // Hardening: "Fail with 403 TENANT_MISMATCH on org mismatch"
-            if (session.organization_id !== organizationId) {
-                res.status(403).json({
-                    error: 'Forbidden',
-                    message: 'Tenant mismatch',
-                    code: 'TENANT_MISMATCH'
+                res.status(401).json({
+                    error: 'Unauthorized',
+                    message: 'Authentication required',
+                    code: 'AUTH_REQUIRED'
                 });
                 return;
             }
 
-            // 6. Attach User Context
+            // 2. Resolve Session
+            // This now uses the global lookup method we just added
+            const session = await authSessionService.resolveSession(sessionId);
+
+            // 3. Populate Context
             req.user = {
                 id: session.user_id,
                 organizationId: session.organization_id,
@@ -68,9 +40,17 @@ export function createAuthenticateMiddleware(authSessionService: IAuthSessionSer
             };
 
             next();
+
         } catch (error) {
-            console.error('Authentication Error:', error);
-            res.status(401).json({ error: 'Unauthorized', message: 'Authentication failed' });
+            // Fail Closed
+            // distinguish "Not Found" vs "Internal Error" if possible, but for auth, 401 is usually safest.
+            console.error('Authentication Failed:', error);
+
+            res.status(401).json({
+                error: 'Unauthorized',
+                message: 'Invalid or expired session',
+                code: 'INVALID_SESSION'
+            });
         }
     };
 }

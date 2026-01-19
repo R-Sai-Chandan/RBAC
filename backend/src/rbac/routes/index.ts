@@ -18,9 +18,11 @@ import { IProfileService } from '../services/profile.service';
 import { IGroupService } from '../services/group.service';
 import { ISharingRuleService } from '../services/sharingRule.service';
 import { ISmtpConfigService } from '../services/smtpConfig.service';
+import { IPermissionService } from '../services/permission.service';
+import { IRecordShareService } from '../services/recordShare.service';
 
 // Routers
-import { createAuthSessionsRouter } from './authSessions.routes';
+import { createPublicAuthRouter, createProtectedAuthRouter } from './authSessions.routes';
 import { createMeRouter } from './me.routes';
 import { createUsersRouter } from './users.routes';
 import { createRolesRouter } from './roles.routes';
@@ -29,6 +31,8 @@ import { createGroupsRouter } from './groups.routes';
 import { createSharingRulesRouter } from './sharingRules.routes';
 import { createSmtpConfigRouter } from './smtpConfig.routes';
 import { createAuditLogsRouter } from './auditLogs.routes';
+import { createPermissionsRouter } from './permissions.routes';
+import { createRecordSharesRouter } from './recordShares.routes';
 
 // Middleware
 import { createAuthenticateMiddleware } from '../middleware/authenticate.middleware';
@@ -46,6 +50,8 @@ export interface RBACRouterDeps {
     groupService: IGroupService;
     sharingRuleService: ISharingRuleService;
     smtpConfigService: ISmtpConfigService;
+    permissionService: IPermissionService;
+    recordShareService: IRecordShareService;
 }
 
 export function createRBACRouter(deps: RBACRouterDeps): Router {
@@ -55,13 +61,17 @@ export function createRBACRouter(deps: RBACRouterDeps): Router {
     // ═══════════════════════════════════════════════════════════════════════
     // PUBLIC ROUTES (No Auth Required)
     // ═══════════════════════════════════════════════════════════════════════
-    const authRouter = createAuthSessionsRouter(deps.authSessionService, deps.userRepository);
-    router.use('/auth', authRouter); // /rbac/auth/login, /rbac/auth/logout
+    const publicAuthRouter = createPublicAuthRouter(deps.authSessionService, deps.userRepository);
+    router.use('/auth', publicAuthRouter); // /rbac/auth/login
 
     // ═══════════════════════════════════════════════════════════════════════
     // PROTECTED ROUTES (Auth Required)
     // ═══════════════════════════════════════════════════════════════════════
     router.use(authenticate);
+
+    // Protected Auth Routes (Logout, Sessions)
+    const protectedAuthRouter = createProtectedAuthRouter(deps.authSessionService);
+    router.use('/auth', protectedAuthRouter); // /rbac/auth/logout, /rbac/auth/sessions
 
     // Identity & Navigation (Self-service, no admin permission required)
     router.use('/me', createMeRouter(deps.userRepository, deps.userRoleRepository, deps.evaluationService));
@@ -90,6 +100,12 @@ export function createRBACRouter(deps: RBACRouterDeps): Router {
 
     // AUDIT module
     router.use('/audit-logs', createAuditLogsRouter(deps.auditService, deps.evaluationService));
+
+    // PERMISSIONS module (Admin)
+    router.use('/permissions', createPermissionsRouter(deps.permissionService));
+
+    // RECORD SHARES module (Admin)
+    router.use('/record-shares', createRecordSharesRouter(deps.recordShareService));
 
     return router;
 }

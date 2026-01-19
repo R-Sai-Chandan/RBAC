@@ -30,10 +30,8 @@ export function createAuditLogsRouter(
     // GET /audit-logs -> READ
     router.get('/', requirePermission('AUDIT', 'read', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
-            if (!req.user || !req.user.organizationId) {
-                res.status(401).json({ error: 'Unauthorized' });
-                return;
-            }
+            // Context guaranteed by authenticate middleware
+            const { organizationId } = req.user!;
 
             const { limit = '50', offset = '0', action, entityType, userId, startDate, endDate } = req.query;
 
@@ -46,21 +44,21 @@ export function createAuditLogsRouter(
                     return;
                 }
                 logs = await auditService.getByAction(
-                    req.user.organizationId,
+                    organizationId,
                     auditAction,
                     parseInt(limit as string, 10),
                     parseInt(offset as string, 10)
                 );
             } else if (userId) {
                 logs = await auditService.getByUser(
-                    req.user.organizationId,
+                    organizationId,
                     userId as string,
                     parseInt(limit as string, 10),
                     parseInt(offset as string, 10)
                 );
             } else if (entityType && req.query.entityId) {
                 logs = await auditService.getByEntity(
-                    req.user.organizationId,
+                    organizationId,
                     entityType as string,
                     req.query.entityId as string,
                     parseInt(limit as string, 10),
@@ -68,7 +66,7 @@ export function createAuditLogsRouter(
                 );
             } else if (startDate && endDate) {
                 logs = await auditService.getByDateRange(
-                    req.user.organizationId,
+                    organizationId,
                     new Date(startDate as string),
                     new Date(endDate as string),
                     parseInt(limit as string, 10),
@@ -77,7 +75,7 @@ export function createAuditLogsRouter(
             } else {
                 // Default: get recent logs
                 logs = await auditService.getByDateRange(
-                    req.user.organizationId,
+                    organizationId,
                     new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // Last 30 days
                     new Date(),
                     parseInt(limit as string, 10),
@@ -96,17 +94,15 @@ export function createAuditLogsRouter(
     // NOTE: Must be defined BEFORE /:id to avoid route conflict
     router.get('/export', requirePermission('AUDIT', 'export', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
-            if (!req.user || !req.user.organizationId) {
-                res.status(401).json({ error: 'Unauthorized' });
-                return;
-            }
+            // Context guaranteed by authenticate middleware
+            const { organizationId } = req.user!;
 
             const { startDate, endDate } = req.query;
             const start = startDate ? new Date(startDate as string) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
             const end = endDate ? new Date(endDate as string) : new Date();
 
             const logs = await auditService.getByDateRange(
-                req.user.organizationId,
+                organizationId,
                 start,
                 end,
                 10000, // Max export limit
@@ -140,12 +136,10 @@ export function createAuditLogsRouter(
     // GET /audit-logs/:id -> READ
     router.get('/:id', requirePermission('AUDIT', 'read', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
-            if (!req.user || !req.user.organizationId) {
-                res.status(401).json({ error: 'Unauthorized' });
-                return;
-            }
+            // Context guaranteed by authenticate middleware
+            const { organizationId } = req.user!;
             const id = getRequiredParam(req.params, 'id');
-            const log = await auditService.getById(req.user.organizationId, id);
+            const log = await auditService.getById(organizationId, id);
             res.json({ data: log });
         } catch (error) {
             console.error('Error fetching audit log:', error);

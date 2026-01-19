@@ -13,41 +13,32 @@ import SharingRulesPage from './rbac/pages/SharingRulesPage';
 import AuditLogsPage from './rbac/pages/AuditLogsPage';
 import SmtpConfigPage from './rbac/pages/SmtpConfigPage';
 
+import { NavigationProvider } from './rbac/context/NavigationContext';
+
+
 /**
  * ProtectedRoute - Requires authentication
  * Redirects to login if not authenticated.
  */
 function ProtectedRoute({ children }: { children: JSX.Element }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) return <div>Loading...</div>;
   if (!isAuthenticated) return <Navigate to="/rbac/login" replace />;
   return children;
 }
 
 /**
  * LandingRedirect - Redirects authenticated user to their landing page
- * Fetches landing page from backend to ensure it's validated.
+ * Now relies on AuthContext for landing page data.
  */
 function LandingRedirect() {
-  const { isAuthenticated } = useAuth();
-  const [landingPage, setLandingPage] = useState<string | null>(null);
-  const location = useLocation();
+  const { isAuthenticated, defaultLandingPage, isLoading } = useAuth();
 
-  useEffect(() => {
-    if (isAuthenticated && location.pathname === '/rbac') {
-      api.get('/me')
-        .then(res => {
-          const page = res.data.data.defaultLandingPage || '/rbac/profile';
-          setLandingPage(page);
-        })
-        .catch(() => {
-          setLandingPage('/rbac/profile');
-        });
-    }
-  }, [isAuthenticated, location.pathname]);
-
+  if (isLoading) return <div>Loading...</div>;
   if (!isAuthenticated) return <Navigate to="/rbac/login" replace />;
-  if (!landingPage) return <div>Loading...</div>;
-  return <Navigate to={landingPage} replace />;
+
+  return <Navigate to={defaultLandingPage} replace />;
 }
 
 /**
@@ -65,46 +56,48 @@ function SettingsIndex() {
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          {/* Public: Login */}
-          <Route path="/rbac/login" element={<Login />} />
+      <NavigationProvider>
+        <BrowserRouter>
+          <Routes>
+            {/* Public: Login */}
+            <Route path="/rbac/login" element={<Login />} />
 
-          {/* Root redirect to /rbac */}
-          <Route path="/" element={<Navigate to="/rbac" replace />} />
+            {/* Root redirect to /rbac */}
+            <Route path="/" element={<Navigate to="/rbac" replace />} />
 
-          {/* RBAC Namespace - Protected */}
-          <Route path="/rbac" element={<LandingRedirect />} />
+            {/* RBAC Namespace - Protected */}
+            <Route path="/rbac" element={<LandingRedirect />} />
 
-          {/* Profile - Self-service (no admin permission required) */}
-          <Route path="/rbac/profile" element={
-            <ProtectedRoute>
-              <AdminLayout />
-            </ProtectedRoute>
-          }>
-            <Route index element={<ProfilePage />} />
-          </Route>
+            {/* Profile - Self-service (no admin permission required) */}
+            <Route path="/rbac/profile" element={
+              <ProtectedRoute>
+                <AdminLayout />
+              </ProtectedRoute>
+            }>
+              <Route index element={<ProfilePage />} />
+            </Route>
 
-          {/* Settings - Admin module with sub-sections */}
-          <Route path="/rbac/settings" element={
-            <ProtectedRoute>
-              <AdminLayout />
-            </ProtectedRoute>
-          }>
-            <Route index element={<SettingsIndex />} />
-            <Route path="users" element={<UsersPage />} />
-            <Route path="roles" element={<RolesPage />} />
-            <Route path="profiles" element={<ProfilesPage />} />
-            <Route path="groups" element={<GroupsPage />} />
-            <Route path="sharing" element={<SharingRulesPage />} />
-            <Route path="smtp" element={<SmtpConfigPage />} />
-            <Route path="audit" element={<AuditLogsPage />} />
-          </Route>
+            {/* Settings - Admin module with sub-sections */}
+            <Route path="/rbac/settings" element={
+              <ProtectedRoute>
+                <AdminLayout />
+              </ProtectedRoute>
+            }>
+              <Route index element={<SettingsIndex />} />
+              <Route path="users" element={<UsersPage />} />
+              <Route path="roles" element={<RolesPage />} />
+              <Route path="profiles" element={<ProfilesPage />} />
+              <Route path="groups" element={<GroupsPage />} />
+              <Route path="sharing" element={<SharingRulesPage />} />
+              <Route path="smtp" element={<SmtpConfigPage />} />
+              <Route path="audit" element={<AuditLogsPage />} />
+            </Route>
 
-          {/* Catch-all: Redirect unknown paths to /rbac */}
-          <Route path="*" element={<Navigate to="/rbac" replace />} />
-        </Routes>
-      </BrowserRouter>
+            {/* Catch-all: Redirect unknown paths to /rbac */}
+            <Route path="*" element={<Navigate to="/rbac" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </NavigationProvider>
     </AuthProvider>
   );
 }

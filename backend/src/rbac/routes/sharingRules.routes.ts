@@ -22,11 +22,8 @@ export function createSharingRulesRouter(
     // GET /sharing-rules -> READ
     router.get('/', requirePermission('SHARING', 'read', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
-            if (!req.user || !req.user.organizationId) {
-                res.status(401).json({ error: 'Unauthorized' });
-                return;
-            }
-            const rules = await sharingRuleService.listAll(req.user.organizationId);
+
+            const rules = await sharingRuleService.listAll(req.user!.organizationId);
             res.json({ data: rules });
         } catch (error) {
             console.error('Error listing sharing rules:', error);
@@ -37,12 +34,9 @@ export function createSharingRulesRouter(
     // GET /sharing-rules/:id -> READ
     router.get('/:id', requirePermission('SHARING', 'read', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
-            if (!req.user || !req.user.organizationId) {
-                res.status(401).json({ error: 'Unauthorized' });
-                return;
-            }
+
             const id = getRequiredParam(req.params, 'id');
-            const rule = await sharingRuleService.getById(req.user.organizationId, id);
+            const rule = await sharingRuleService.getById(req.user!.organizationId, id);
             res.json({ data: rule });
         } catch (error) {
             console.error('Error fetching sharing rule:', error);
@@ -53,11 +47,8 @@ export function createSharingRulesRouter(
     // POST /sharing-rules -> CREATE
     router.post('/', requirePermission('SHARING', 'create', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
-            if (!req.user || !req.user.organizationId || !req.user.id) {
-                res.status(401).json({ error: 'Unauthorized' });
-                return;
-            }
-            const rule = await sharingRuleService.create(req.user.organizationId, req.body, req.user.id);
+
+            const rule = await sharingRuleService.create(req.user!.organizationId, req.body, req.user!.id);
             res.status(201).json({ data: rule });
         } catch (error) {
             console.error('Error creating sharing rule:', error);
@@ -68,12 +59,9 @@ export function createSharingRulesRouter(
     // PATCH /sharing-rules/:id -> UPDATE
     router.patch('/:id', requirePermission('SHARING', 'update', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
-            if (!req.user || !req.user.organizationId || !req.user.id) {
-                res.status(401).json({ error: 'Unauthorized' });
-                return;
-            }
+
             const id = getRequiredParam(req.params, 'id');
-            const rule = await sharingRuleService.update(req.user.organizationId, id, req.body, req.user.id);
+            const rule = await sharingRuleService.update(req.user!.organizationId, id, req.body, req.user!.id);
             res.json({ data: rule });
         } catch (error) {
             console.error('Error updating sharing rule:', error);
@@ -84,12 +72,9 @@ export function createSharingRulesRouter(
     // DELETE /sharing-rules/:id -> DELETE
     router.delete('/:id', requirePermission('SHARING', 'delete', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
-            if (!req.user || !req.user.organizationId || !req.user.id) {
-                res.status(401).json({ error: 'Unauthorized' });
-                return;
-            }
+
             const id = getRequiredParam(req.params, 'id');
-            await sharingRuleService.delete(req.user.organizationId, id, req.user.id);
+            await sharingRuleService.delete(req.user!.organizationId, id, req.user!.id);
             res.status(204).send();
         } catch (error) {
             console.error('Error deleting sharing rule:', error);

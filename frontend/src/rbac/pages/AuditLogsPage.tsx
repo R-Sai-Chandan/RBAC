@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import api from '../api/api';
+import { usePermissions } from '../hooks/usePermissions';
 import { Table } from '../components/Table';
 import { Button } from '../components/Button';
 
 export default function AuditLogsPage() {
+    usePermissions('AUDIT');
     const [logs, setLogs] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [filters, setFilters] = useState({ entity: '', action: '', userId: '' });

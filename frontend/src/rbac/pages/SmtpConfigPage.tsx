@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../api/api';
+import { usePermissions } from '../hooks/usePermissions';
 import { Table } from '../components/Table';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
@@ -11,6 +12,7 @@ export default function SmtpConfigPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingConfig, setEditingConfig] = useState<any | null>(null);
     const [formData, setFormData] = useState({ host: '', port: '587', username: '', password: '', isActive: false });
+    const { canCreate, canUpdate, canDelete } = usePermissions('SMTP_CONFIG');
 
     useEffect(() => {
         fetchConfigs();
@@ -83,8 +85,8 @@ export default function SmtpConfigPage() {
             header: 'Actions',
             accessor: (row: any) => (
                 <div style={{ display: 'flex', gap: '5px' }}>
-                    <Button variant="secondary" onClick={(e: any) => { e.stopPropagation(); openEdit(row); }}>Edit</Button>
-                    <Button variant="danger" onClick={(e: any) => { e.stopPropagation(); handleDelete(row.id); }}>Delete</Button>
+                    {canUpdate && <Button variant="secondary" onClick={(e: any) => { e.stopPropagation(); openEdit(row); }}>Edit</Button>}
+                    {canDelete && <Button variant="danger" onClick={(e: any) => { e.stopPropagation(); handleDelete(row.id); }}>Delete</Button>}
                 </div>
             )
         }
@@ -94,7 +96,7 @@ export default function SmtpConfigPage() {
         <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                 <h1>SMTP Configuration</h1>
-                <Button onClick={openCreate}>Create Config</Button>
+                {canCreate && <Button onClick={openCreate}>Create Config</Button>}
             </div>
 
             {loading ? <div>Loading...</div> : <Table columns={columns} data={configs} />}

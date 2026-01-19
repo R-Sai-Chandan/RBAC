@@ -26,19 +26,6 @@ import {
 import { AuditAction, AuditStatus } from '../models/audit_log.model';
 
 /**
- * Extended Express Request with RBAC context
- * 
- * CRITICAL: Middleware expects these to be set by authentication middleware.
- */
-export interface RBACRequest extends Request {
-    user?: {
-        id: string;
-        organizationId: string;
-        [key: string]: any;
-    };
-}
-
-/**
  * Middleware factory
  * 
  * @param moduleCode - Module code (e.g., 'INVOICES', 'LEADS')
@@ -52,7 +39,7 @@ export function requirePermission(
     evaluationService: IEvaluationService,
     auditService: IAuditService
 ) {
-    return async (req: RBACRequest, res: Response, next: NextFunction): Promise<void> => {
+    return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             // FAIL-CLOSED: Missing user
             if (!req.user) {
@@ -191,7 +178,7 @@ export function requirePermission(
  * 
  * This is a placeholder. Replace with your actual authentication middleware.
  */
-export function extractUser(req: RBACRequest, res: Response, next: NextFunction): void {
+export function extractUser(req: Request, res: Response, next: NextFunction): void {
     // PLACEHOLDER: Replace with actual authentication logic
     // Example: JWT token validation, session lookup, etc.
 

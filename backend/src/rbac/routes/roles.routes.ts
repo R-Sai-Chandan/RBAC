@@ -23,12 +23,9 @@ export function createRolesRouter(
     // GET /roles - List all roles -> READ
     router.get('/', requirePermission('ROLES', 'read', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
-            if (!req.user || !req.user.id || !req.user.organizationId) {
-                res.status(401).json({ error: 'Unauthorized', message: 'Missing user context' });
-                return;
-            }
 
-            const organizationId = req.user.organizationId;
+
+            const organizationId = req.user!.organizationId;
             const roles = await roleService.listAll(organizationId);
             res.json({ data: roles });
         } catch (error) {
@@ -40,13 +37,10 @@ export function createRolesRouter(
     // GET /roles/:id - Get role by ID -> READ
     router.get('/:id', requirePermission('ROLES', 'read', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
-            if (!req.user || !req.user.organizationId) {
-                res.status(401).json({ error: 'Unauthorized', message: 'Missing user context' });
-                return;
-            }
+
 
             const id = getRequiredParam(req.params, 'id');
-            const role = await roleService.getById(req.user.organizationId, id);
+            const role = await roleService.getById(req.user!.organizationId, id);
             res.json({ data: role });
         } catch (error) {
             if (error instanceof RoleNotFoundError) {
@@ -61,12 +55,9 @@ export function createRolesRouter(
     // POST /roles - Create new role -> CREATE
     router.post('/', requirePermission('ROLES', 'create', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
-            if (!req.user || !req.user.id || !req.user.organizationId) {
-                res.status(401).json({ error: 'Unauthorized', message: 'Missing user context' });
-                return;
-            }
 
-            const role = await roleService.create(req.user.organizationId, req.body, req.user.id);
+
+            const role = await roleService.create(req.user!.organizationId, req.body, req.user!.id);
             res.status(201).json({ data: role });
         } catch (error) {
             if (error instanceof CircularRoleHierarchyError) {
@@ -81,13 +72,10 @@ export function createRolesRouter(
     // PATCH /roles/:id - Update role -> UPDATE
     router.patch('/:id', requirePermission('ROLES', 'update', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
-            if (!req.user || !req.user.organizationId) {
-                res.status(401).json({ error: 'Unauthorized', message: 'Missing user context' });
-                return;
-            }
+
 
             const id = getRequiredParam(req.params, 'id');
-            const role = await roleService.update(req.user.organizationId, id, req.body);
+            const role = await roleService.update(req.user!.organizationId, id, req.body);
             res.json({ data: role });
         } catch (error) {
             if (error instanceof RoleNotFoundError) {
@@ -106,13 +94,10 @@ export function createRolesRouter(
     // DELETE /roles/:id - Delete role -> DELETE
     router.delete('/:id', requirePermission('ROLES', 'delete', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
-            if (!req.user || !req.user.organizationId) {
-                res.status(401).json({ error: 'Unauthorized', message: 'Missing user context' });
-                return;
-            }
+
 
             const id = getRequiredParam(req.params, 'id');
-            await roleService.delete(req.user.organizationId, id);
+            await roleService.delete(req.user!.organizationId, id);
             res.status(204).send();
         } catch (error) {
             if (error instanceof RoleNotFoundError) {
@@ -127,10 +112,7 @@ export function createRolesRouter(
     // POST /roles/:id/users - Assign user to role -> UPDATE (Role Membership)
     router.post('/:id/users', requirePermission('ROLES', 'update', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
-            if (!req.user || !req.user.id || !req.user.organizationId) {
-                res.status(401).json({ error: 'Unauthorized', message: 'Missing user context' });
-                return;
-            }
+
 
             const roleId = getRequiredParam(req.params, 'id');
             const { userId } = req.body;
@@ -140,7 +122,7 @@ export function createRolesRouter(
                 return;
             }
 
-            await roleService.assignToUser(req.user.organizationId, roleId, userId, req.user.id);
+            await roleService.assignToUser(req.user!.organizationId, roleId, userId, req.user!.id);
             res.status(201).json({ message: 'User assigned to role' });
         } catch (error) {
             if (error instanceof RoleNotFoundError || error instanceof UserNotFoundError) {
@@ -159,15 +141,12 @@ export function createRolesRouter(
     // DELETE /roles/:id/users/:userId - Remove user from role -> UPDATE (Role Membership)
     router.delete('/:id/users/:userId', requirePermission('ROLES', 'update', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
-            if (!req.user || !req.user.organizationId) {
-                res.status(401).json({ error: 'Unauthorized', message: 'Missing user context' });
-                return;
-            }
+
 
             const roleId = getRequiredParam(req.params, 'id');
             const userId = getRequiredParam(req.params, 'userId');
 
-            await roleService.revokeFromUser(req.user.organizationId, roleId, userId);
+            await roleService.revokeFromUser(req.user!.organizationId, roleId, userId);
             res.status(204).send();
         } catch (error) {
             console.error('Error removing user from role:', error);

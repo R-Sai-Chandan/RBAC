@@ -22,11 +22,8 @@ export function createGroupsRouter(
     // GET /groups -> READ
     router.get('/', requirePermission('GROUPS', 'read', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
-            if (!req.user || !req.user.organizationId) {
-                res.status(401).json({ error: 'Unauthorized' });
-                return;
-            }
-            const groups = await groupService.listAll(req.user.organizationId);
+
+            const groups = await groupService.listAll(req.user!.organizationId);
             res.json({ data: groups });
         } catch (error) {
             console.error('Error listing groups:', error);
@@ -37,12 +34,9 @@ export function createGroupsRouter(
     // GET /groups/:id -> READ
     router.get('/:id', requirePermission('GROUPS', 'read', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
-            if (!req.user || !req.user.organizationId) {
-                res.status(401).json({ error: 'Unauthorized' });
-                return;
-            }
+
             const id = getRequiredParam(req.params, 'id');
-            const group = await groupService.getById(req.user.organizationId, id);
+            const group = await groupService.getById(req.user!.organizationId, id);
             res.json({ data: group });
         } catch (error) {
             console.error('Error fetching group:', error);
@@ -53,11 +47,8 @@ export function createGroupsRouter(
     // POST /groups -> CREATE
     router.post('/', requirePermission('GROUPS', 'create', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
-            if (!req.user || !req.user.organizationId || !req.user.id) {
-                res.status(401).json({ error: 'Unauthorized' });
-                return;
-            }
-            const group = await groupService.create(req.user.organizationId, req.body, req.user.id);
+
+            const group = await groupService.create(req.user!.organizationId, req.body, req.user!.id);
             res.status(201).json({ data: group });
         } catch (error) {
             console.error('Error creating group:', error);
@@ -68,12 +59,9 @@ export function createGroupsRouter(
     // PATCH /groups/:id -> UPDATE
     router.patch('/:id', requirePermission('GROUPS', 'update', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
-            if (!req.user || !req.user.organizationId || !req.user.id) {
-                res.status(401).json({ error: 'Unauthorized' });
-                return;
-            }
+
             const id = getRequiredParam(req.params, 'id');
-            const group = await groupService.update(req.user.organizationId, id, req.body, req.user.id);
+            const group = await groupService.update(req.user!.organizationId, id, req.body, req.user!.id);
             res.json({ data: group });
         } catch (error) {
             console.error('Error updating group:', error);
@@ -84,12 +72,9 @@ export function createGroupsRouter(
     // DELETE /groups/:id -> DELETE
     router.delete('/:id', requirePermission('GROUPS', 'delete', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
-            if (!req.user || !req.user.organizationId || !req.user.id) {
-                res.status(401).json({ error: 'Unauthorized' });
-                return;
-            }
+
             const id = getRequiredParam(req.params, 'id');
-            await groupService.delete(req.user.organizationId, id, req.user.id);
+            await groupService.delete(req.user!.organizationId, id, req.user!.id);
             res.status(204).send();
         } catch (error) {
             console.error('Error deleting group:', error);
@@ -100,17 +85,14 @@ export function createGroupsRouter(
     // POST /groups/:id/users - Add user to group -> UPDATE (Group membership)
     router.post('/:id/users', requirePermission('GROUPS', 'update', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
-            if (!req.user || !req.user.organizationId || !req.user.id) {
-                res.status(401).json({ error: 'Unauthorized' });
-                return;
-            }
+
             const groupId = getRequiredParam(req.params, 'id');
             const { userId } = req.body;
             if (!userId) {
                 res.status(400).json({ error: 'Bad Request', message: 'userId required' });
                 return;
             }
-            await groupService.addMember(req.user.organizationId, groupId, userId, req.user.id);
+            await groupService.addMember(req.user!.organizationId, groupId, userId, req.user!.id);
             res.status(201).json({ message: 'User added to group' });
         } catch (error) {
             console.error('Error adding user to group:', error);
@@ -121,13 +103,10 @@ export function createGroupsRouter(
     // DELETE /groups/:id/users/:userId - Remove user from group -> UPDATE (Group membership)
     router.delete('/:id/users/:userId', requirePermission('GROUPS', 'update', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
-            if (!req.user || !req.user.organizationId || !req.user.id) {
-                res.status(401).json({ error: 'Unauthorized' });
-                return;
-            }
+
             const groupId = getRequiredParam(req.params, 'id');
             const userId = getRequiredParam(req.params, 'userId');
-            await groupService.removeMember(req.user.organizationId, groupId, userId, req.user.id);
+            await groupService.removeMember(req.user!.organizationId, groupId, userId, req.user!.id);
             res.status(204).send();
         } catch (error) {
             console.error('Error removing user from group:', error);

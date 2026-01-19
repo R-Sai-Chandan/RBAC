@@ -8,13 +8,8 @@ const api = axios.create({
     },
 });
 
-// Request Interceptor: Inject Organization Context Header
+// Request Interceptor: (Cleaned up legacy org context)
 api.interceptors.request.use((config) => {
-    const organizationId = localStorage.getItem('organizationId');
-
-    if (organizationId) {
-        config.headers['X-Organization-ID'] = organizationId;
-    }
     return config;
 });
 
@@ -25,7 +20,6 @@ api.interceptors.response.use(
         if (error.response && error.response.status === 401) {
             // Session invalid or expired - redirect to login
             localStorage.removeItem('user');
-            localStorage.removeItem('organizationId');
             // Use correct /rbac/login path
             window.location.href = '/rbac/login';
         }

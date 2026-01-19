@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../api/api';
+import { usePermissions } from '../hooks/usePermissions';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
 import { FormInput } from '../components/FormInput';
@@ -18,6 +19,7 @@ export default function RolesPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingRole, setEditingRole] = useState<Role | null>(null);
     const [formData, setFormData] = useState({ name: '', description: '', parentRoleId: '' });
+    const { canCreate, canUpdate, canDelete } = usePermissions('ROLES');
 
     useEffect(() => {
         fetchRoles();
@@ -117,8 +119,8 @@ export default function RolesPage() {
                     <span className="table-tree-node__description">{role.description}</span>
                 </div>
                 <div className="table-tree-node__actions">
-                    <Button variant="secondary" onClick={() => openEdit(role)}>Edit</Button>
-                    <Button variant="danger" onClick={() => handleDelete(role)}>Delete</Button>
+                    {canUpdate && <Button variant="secondary" onClick={() => openEdit(role)}>Edit</Button>}
+                    {canDelete && <Button variant="danger" onClick={() => handleDelete(role)}>Delete</Button>}
                 </div>
             </div>
             {role.children && role.children.map(child => <RoleNode key={child.id} role={child} level={level + 1} />)}
@@ -129,7 +131,7 @@ export default function RolesPage() {
         <div>
             <div className="page-header">
                 <h1>Roles & Hierarchy</h1>
-                <Button onClick={openCreate}>Create Role</Button>
+                {canCreate && <Button onClick={openCreate}>Create Role</Button>}
             </div>
 
             {loading ? <div>Loading...</div> : (

@@ -40,13 +40,8 @@ export function createMeRouter(
      */
     router.get('/', async (req: Request, res: Response) => {
         try {
-            if (!req.user || !req.user.id || !req.user.organizationId) {
-                res.status(401).json({ error: 'Unauthorized', message: 'Missing user context' });
-                return;
-            }
-
-            const organizationId = req.user.organizationId;
-            const userId = req.user.id;
+            // Context guaranteed by authenticate middleware
+            const { id: userId, organizationId } = req.user!;
 
             // 1. Fetch User
             const user = await userRepository.findById(organizationId, userId);
@@ -124,13 +119,8 @@ export function createMeRouter(
      */
     router.get('/navigation', async (req: Request, res: Response) => {
         try {
-            if (!req.user || !req.user.id || !req.user.organizationId) {
-                res.status(401).json({ error: 'Unauthorized', message: 'Missing user context' });
-                return;
-            }
-
-            const organizationId = req.user.organizationId;
-            const userId = req.user.id;
+            // Context guaranteed by authenticate middleware
+            const { id: userId, organizationId } = req.user!;
 
             const modules: any[] = [];
 
@@ -192,26 +182,9 @@ export function createMeRouter(
      */
     router.post('/change-password', async (req: Request, res: Response) => {
         try {
-            if (!req.user || !req.user.id || !req.user.organizationId) {
-                res.status(401).json({ error: 'Unauthorized', message: 'Missing user context' });
-                return;
-            }
-
+            // Context guaranteed by authenticate middleware
+            const { id: userId, organizationId } = req.user!;
             const { currentPassword, newPassword } = req.body;
-
-            if (!currentPassword || !newPassword) {
-                res.status(400).json({ error: 'Bad Request', message: 'currentPassword and newPassword required' });
-                return;
-            }
-
-            // Validate password strength (basic)
-            if (newPassword.length < 8) {
-                res.status(400).json({ error: 'Bad Request', message: 'Password must be at least 8 characters' });
-                return;
-            }
-
-            const organizationId = req.user.organizationId;
-            const userId = req.user.id;
 
             // Fetch user with password hash
             const user = await userRepository.findById(organizationId, userId);
@@ -248,14 +221,9 @@ export function createMeRouter(
      */
     router.put('/preferences', async (req: Request, res: Response) => {
         try {
-            if (!req.user || !req.user.id || !req.user.organizationId) {
-                res.status(401).json({ error: 'Unauthorized', message: 'Missing user context' });
-                return;
-            }
-
+            // Context guaranteed by authenticate middleware
+            const { id: userId, organizationId } = req.user!;
             const { defaultLandingPage } = req.body;
-            const organizationId = req.user.organizationId;
-            const userId = req.user.id;
 
             // Validate landing page
             if (defaultLandingPage) {

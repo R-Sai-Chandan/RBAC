@@ -11,6 +11,7 @@ export interface IAuthSessionRepository {
     findAllByUser(organizationId: string, userId: string): Promise<AuthSession[]>;
     findActiveByUser(organizationId: string, userId: string): Promise<AuthSession[]>;
     deleteAllByUser(organizationId: string, userId: string): Promise<void>;
+    findBySessionIdGlobal(sessionId: string): Promise<AuthSession | null>;
 }
 
 export class AuthSessionRepository extends BaseRepository<AuthSession> implements IAuthSessionRepository {
@@ -40,5 +41,13 @@ export class AuthSessionRepository extends BaseRepository<AuthSession> implement
             `UPDATE ${this.tableName} SET deleted_at = NOW() WHERE user_id = $1 AND organization_id = $2`,
             [userId, organizationId]
         );
+    }
+
+    async findBySessionIdGlobal(sessionId: string): Promise<AuthSession | null> {
+        const res = await this.query(
+            `SELECT * FROM ${this.tableName} WHERE id = $1 AND deleted_at IS NULL`,
+            [sessionId]
+        );
+        return res.rows[0] || null;
     }
 }

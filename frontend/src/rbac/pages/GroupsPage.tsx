@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../api/api';
+import { usePermissions } from '../hooks/usePermissions';
 import { Table } from '../components/Table';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
@@ -12,6 +13,7 @@ export default function GroupsPage() {
     const [isManageOpen, setIsManageOpen] = useState(false);
     const [selectedGroup, setSelectedGroup] = useState<any | null>(null);
     const [formData, setFormData] = useState({ name: '', description: '' });
+    const { canCreate, canUpdate } = usePermissions('GROUPS');
 
     // User Assignment Support
     const [allUsers, setAllUsers] = useState<any[]>([]);
@@ -82,7 +84,7 @@ export default function GroupsPage() {
             header: 'Actions',
             accessor: (row: any) => (
                 <div style={{ display: 'flex', gap: '5px' }}>
-                    <Button variant="secondary" onClick={(e: any) => { e.stopPropagation(); openManage(row); }}>Manage Users</Button>
+                    {canUpdate && <Button variant="secondary" onClick={(e: any) => { e.stopPropagation(); openManage(row); }}>Manage Users</Button>}
                 </div>
             )
         }
@@ -92,7 +94,7 @@ export default function GroupsPage() {
         <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                 <h1>Groups</h1>
-                <Button onClick={() => setIsCreateOpen(true)}>Create Group</Button>
+                {canCreate && <Button onClick={() => setIsCreateOpen(true)}>Create Group</Button>}
             </div>
 
             {loading ? <div>Loading...</div> : <Table columns={columns} data={groups} />}

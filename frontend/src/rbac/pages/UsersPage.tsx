@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../api/api';
+import { usePermissions } from '../hooks/usePermissions';
 import { Table } from '../components/Table';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
@@ -13,6 +14,7 @@ export default function UsersPage() {
     const [editingUser, setEditingUser] = useState<any | null>(null);
     const [formData, setFormData] = useState({ username: '', email: '', firstName: '', lastName: '', roleIds: [] as string[] });
     const [filterStatus, setFilterStatus] = useState('active');
+    const { canCreate, canUpdate, canDelete } = usePermissions('USERS');
 
     useEffect(() => {
         fetchUsers();
@@ -88,8 +90,8 @@ export default function UsersPage() {
             header: 'Actions',
             accessor: (row: any) => (
                 <div className="table__actions">
-                    <Button variant="secondary" onClick={(e: any) => { e.stopPropagation(); openEdit(row); }}>Edit</Button>
-                    {row.status === 'active' && <Button variant="danger" onClick={(e: any) => { e.stopPropagation(); handleDelete(row); }}>Deactivate</Button>}
+                    {canUpdate && <Button variant="secondary" onClick={(e: any) => { e.stopPropagation(); openEdit(row); }}>Edit</Button>}
+                    {canDelete && row.status === 'active' && <Button variant="danger" onClick={(e: any) => { e.stopPropagation(); handleDelete(row); }}>Deactivate</Button>}
                 </div>
             )
         }
@@ -99,7 +101,7 @@ export default function UsersPage() {
         <div>
             <div className="page-header">
                 <h1>User Management</h1>
-                <Button onClick={openCreate}>Create User</Button>
+                {canCreate && <Button onClick={openCreate}>Create User</Button>}
             </div>
 
             <div className="mb-10">

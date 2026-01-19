@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../api/api';
+import { usePermissions } from '../hooks/usePermissions';
 import { Table } from '../components/Table';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
@@ -10,6 +11,7 @@ export default function ProfilesPage() {
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [formData, setFormData] = useState({ name: '', description: '' });
+    const { canCreate, canUpdate } = usePermissions('PROFILES');
 
     // Matrix State
     const [selectedProfile, setSelectedProfile] = useState<any | null>(null);
@@ -69,7 +71,7 @@ export default function ProfilesPage() {
         {
             header: 'Actions',
             accessor: (row: any) => (
-                <Button variant="secondary" onClick={(e: any) => { e.stopPropagation(); openMatrix(row); }}>Manage Permissions</Button>
+                canUpdate && <Button variant="secondary" onClick={(e: any) => { e.stopPropagation(); openMatrix(row); }}>Manage Permissions</Button>
             )
         }
     ];
@@ -78,7 +80,7 @@ export default function ProfilesPage() {
         <div style={{ display: 'flex', height: '100%', flexDirection: 'column' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                 <h1>Profiles</h1>
-                <Button onClick={() => setIsModalOpen(true)}>Create Profile</Button>
+                {canCreate && <Button onClick={() => setIsModalOpen(true)}>Create Profile</Button>}
             </div>
 
             {loading ? <div>Loading...</div> : <Table columns={columns} data={profiles} />}

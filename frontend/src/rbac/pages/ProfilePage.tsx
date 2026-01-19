@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import api from '../api/api';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
 import { FormInput } from '../components/FormInput';
 
 export default function ProfilePage() {
-    const { user, organizationId } = useAuth();
+    const { user } = useAuth();
     const [landingPage, setLandingPage] = useState('/home');
     const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
     const [passwords, setPasswords] = useState({ current: '', new: '' });
@@ -79,7 +79,7 @@ export default function ProfilePage() {
                 <div style={{ marginBottom: '20px' }}>
                     <strong>Username: </strong> {user?.username} <br />
                     <strong>Email: </strong> {user?.email} <br />
-                    <strong>Organization ID: </strong> {organizationId}
+
                 </div>
 
                 <div style={{ marginBottom: '20px' }}>

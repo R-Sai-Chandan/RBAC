@@ -23,11 +23,8 @@ export function createProfilesRouter(
     // GET /profiles - List all profiles -> READ
     router.get('/', requirePermission('PROFILES', 'read', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
-            if (!req.user || !req.user.organizationId) {
-                res.status(401).json({ error: 'Unauthorized' });
-                return;
-            }
-            const profiles = await profileService.listAll(req.user.organizationId);
+
+            const profiles = await profileService.listAll(req.user!.organizationId);
             res.json({ data: profiles });
         } catch (error) {
             console.error('Error listing profiles:', error);
@@ -38,12 +35,9 @@ export function createProfilesRouter(
     // GET /profiles/:id -> READ
     router.get('/:id', requirePermission('PROFILES', 'read', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
-            if (!req.user || !req.user.organizationId) {
-                res.status(401).json({ error: 'Unauthorized' });
-                return;
-            }
+
             const id = getRequiredParam(req.params, 'id');
-            const profile = await profileService.getById(req.user.organizationId, id);
+            const profile = await profileService.getById(req.user!.organizationId, id);
             res.json({ data: profile });
         } catch (error) {
             if (error instanceof ProfileNotFoundError) {
@@ -58,11 +52,8 @@ export function createProfilesRouter(
     // POST /profiles -> CREATE
     router.post('/', requirePermission('PROFILES', 'create', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
-            if (!req.user || !req.user.organizationId || !req.user.id) {
-                res.status(401).json({ error: 'Unauthorized' });
-                return;
-            }
-            const profile = await profileService.create(req.user.organizationId, req.body, req.user.id);
+
+            const profile = await profileService.create(req.user!.organizationId, req.body, req.user!.id);
             res.status(201).json({ data: profile });
         } catch (error) {
             console.error('Error creating profile:', error);
@@ -73,12 +64,9 @@ export function createProfilesRouter(
     // PATCH /profiles/:id -> UPDATE
     router.patch('/:id', requirePermission('PROFILES', 'update', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
-            if (!req.user || !req.user.organizationId || !req.user.id) {
-                res.status(401).json({ error: 'Unauthorized' });
-                return;
-            }
+
             const id = getRequiredParam(req.params, 'id');
-            const profile = await profileService.update(req.user.organizationId, id, req.body, req.user.id);
+            const profile = await profileService.update(req.user!.organizationId, id, req.body, req.user!.id);
             res.json({ data: profile });
         } catch (error) {
             if (error instanceof ProfileNotFoundError) {
@@ -93,12 +81,9 @@ export function createProfilesRouter(
     // DELETE /profiles/:id -> DELETE
     router.delete('/:id', requirePermission('PROFILES', 'delete', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
-            if (!req.user || !req.user.organizationId || !req.user.id) {
-                res.status(401).json({ error: 'Unauthorized' });
-                return;
-            }
+
             const id = getRequiredParam(req.params, 'id');
-            await profileService.delete(req.user.organizationId, id, req.user.id);
+            await profileService.delete(req.user!.organizationId, id, req.user!.id);
             res.status(204).send();
         } catch (error) {
             if (error instanceof ProfileNotFoundError) {
@@ -113,12 +98,9 @@ export function createProfilesRouter(
     // GET /profiles/:id/permissions -> READ
     router.get('/:id/permissions', requirePermission('PROFILES', 'read', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
-            if (!req.user || !req.user.organizationId) {
-                res.status(401).json({ error: 'Unauthorized' });
-                return;
-            }
+
             const id = getRequiredParam(req.params, 'id');
-            const permissions = await profileService.getPermissions(req.user.organizationId, id);
+            const permissions = await profileService.getPermissions(req.user!.organizationId, id);
             res.json({ data: permissions });
         } catch (error) {
             console.error('Error fetching profile permissions:', error);

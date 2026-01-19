@@ -1,50 +1,12 @@
-import { useEffect, useState } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
-import api from '../api/api';
-import { useAuth } from '../context/AuthContext';
-
-interface NavChild {
-    code: string;
-    label: string;
-    route: string;
-    isVisible: boolean;
-    actions: string[];
-}
-
-interface NavModule {
-    code: string;
-    label: string;
-    route: string;
-    icon: string;
-    isVisible: boolean;
-    actions: string[];
-    children: NavChild[];
-}
+import { useAuth } from '../hooks/useAuth';
+import { useNavigation } from '../hooks/useNavigation';
 
 export default function AdminLayout() {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
-    const [navModules, setNavModules] = useState<NavModule[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-
-    useEffect(() => {
-        api.get('/me/navigation')
-            .then(res => {
-                setNavModules(res.data.data.modules || []);
-                setLoading(false);
-            })
-            .catch(err => {
-                console.error('Failed to load navigation', err);
-                if (err.response?.status === 401) {
-                    navigate('/rbac/login');
-                } else {
-                    setError('Failed to load navigation');
-                }
-                setLoading(false);
-            });
-    }, [navigate]);
+    const { modules: navModules, loading, error } = useNavigation();
 
     const handleLogout = async () => {
         await logout();

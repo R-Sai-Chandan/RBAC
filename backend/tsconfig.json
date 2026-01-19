@@ -9,9 +9,7 @@
     "module": "nodenext",
     "moduleResolution": "nodenext",
     "allowSyntheticDefaultImports": true,
-    "types": [
-      "node"
-    ],
+    //"types": [      "node"    ],
     // For nodejs:
     // "lib": ["esnext"],
     // "types": ["node"],
@@ -40,6 +38,9 @@
     "skipLibCheck": true,
     "esModuleInterop": true,
     "rootDir": "src",
-    "outDir": "dist",
-  }
+    "outDir": "dist"
+  },
+  "include": [
+    "src"
+  ]
 }

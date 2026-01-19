@@ -139,7 +139,9 @@ async function startServer() {
         profileService,
         groupService,
         sharingRuleService,
-        smtpConfigService
+        smtpConfigService,
+        permissionService,
+        recordShareService
     }));
 
     // Health Check
