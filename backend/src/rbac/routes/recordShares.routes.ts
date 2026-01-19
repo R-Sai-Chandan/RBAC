@@ -16,13 +16,8 @@ export function createRecordSharesRouter(recordShareService: IRecordShareService
     // GET /record-shares - List record shares (with query params)
     router.get('/', async (req: Request, res: Response) => {
         try {
-            // RBAC RULE: Assert auth context
-            if (!req.user || !req.user.id || !req.user.organizationId) {
-                res.status(401).json({ error: 'Unauthorized', message: 'Missing user context' });
-                return;
-            }
-
-            const organizationId = req.user.organizationId;
+            // Context guaranteed by authenticate middleware
+            const { organizationId } = req.user!;
 
             // QUERY PARAM NORMALIZATION: Strict type narrowing
             const module_id = getOptionalQuery(req.query, 'module_id');
@@ -65,16 +60,11 @@ export function createRecordSharesRouter(recordShareService: IRecordShareService
     // GET /record-shares/:id - Get record share by ID
     router.get('/:id', async (req: Request, res: Response) => {
         try {
-            // RBAC RULE: Assert auth context
-            if (!req.user || !req.user.id || !req.user.organizationId) {
-                res.status(401).json({ error: 'Unauthorized', message: 'Missing user context' });
-                return;
-            }
-
+            // Context guaranteed by authenticate middleware
+            const { organizationId } = req.user!;
             // PARAM SAFETY: Strict normalization
             const id = getRequiredParam(req.params, 'id');
 
-            const organizationId = req.user.organizationId;
             const share = await recordShareService.getById(organizationId, id);
             res.json({ data: share });
         } catch (error) {
@@ -90,14 +80,8 @@ export function createRecordSharesRouter(recordShareService: IRecordShareService
     // POST /record-shares - Create new record share
     router.post('/', async (req: Request, res: Response) => {
         try {
-            // RBAC RULE: Assert auth context
-            if (!req.user || !req.user.id || !req.user.organizationId) {
-                res.status(401).json({ error: 'Unauthorized', message: 'Missing user context' });
-                return;
-            }
-
-            const organizationId = req.user.organizationId;
-            const actingUserId = req.user.id;
+            // Context guaranteed by authenticate middleware
+            const { organizationId, id: actingUserId } = req.user!;
             const share = await recordShareService.create(organizationId, req.body, actingUserId);
             res.status(201).json({ data: share });
         } catch (error) {
@@ -109,17 +93,11 @@ export function createRecordSharesRouter(recordShareService: IRecordShareService
     // DELETE /record-shares/:id - Delete record share
     router.delete('/:id', async (req: Request, res: Response) => {
         try {
-            // RBAC RULE: Assert auth context
-            if (!req.user || !req.user.id || !req.user.organizationId) {
-                res.status(401).json({ error: 'Unauthorized', message: 'Missing user context' });
-                return;
-            }
-
+            // Context guaranteed by authenticate middleware
+            const { organizationId, id: actingUserId } = req.user!;
             // PARAM SAFETY: Strict normalization
             const id = getRequiredParam(req.params, 'id');
 
-            const organizationId = req.user.organizationId;
-            const actingUserId = req.user.id;
             await recordShareService.delete(organizationId, id, actingUserId);
             res.status(204).send();
         } catch (error) {

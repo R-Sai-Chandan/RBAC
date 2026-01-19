@@ -19,13 +19,8 @@ exports.up = async function (knex) {
   });
 
   // === Foreign key constraints ===
-  await knex.schema.alterTable('role_profiles', (table) => {
-    table
-      .foreign('assigned_by')
-      .references('id')
-      .inTable('users')
-      .onDelete('SET NULL');
-  });
+  // === Foreign key constraints ===
+  // (assigned_by removed from here to use composite key in RAW block below)
 
   // === Primary key ===
   await knex.schema.alterTable('role_profiles', (table) => {
@@ -48,7 +43,11 @@ exports.up = async function (knex) {
       ADD CONSTRAINT fk_role_profiles_profile
       FOREIGN KEY (organization_id, profile_id)
       REFERENCES profiles(organization_id, id)
-      ON DELETE CASCADE
+      ON DELETE CASCADE,
+      ADD CONSTRAINT fk_role_profiles_assigned_by
+      FOREIGN KEY (organization_id, assigned_by)
+      REFERENCES users(organization_id, id)
+      ON DELETE SET NULL
   `);
 };
 

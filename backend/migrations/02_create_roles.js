@@ -41,13 +41,10 @@ exports.up = async function (knex) {
 
     table.timestamp('created_at').notNullable().defaultTo(knex.fn.now());
 
-    table
-      .bigInteger('created_by')
+    table.bigInteger('created_by')
       .unsigned()
-      .nullable()
-      .references('id')
-      .inTable('users')
-      .onDelete('SET NULL');
+      .nullable();
+    // FK added via RAW for composite check
 
     /* ---------------- Indexes ---------------- */
 
@@ -81,10 +78,14 @@ exports.up = async function (knex) {
   await knex.raw(`
     ALTER TABLE roles
     ADD CONSTRAINT fk_roles_parent_same_org
-    FOREIGN KEY (parent_role_id, organization_id)
+    FOREIGN KEY(parent_role_id, organization_id)
     REFERENCES roles(id, organization_id)
+    ON DELETE SET NULL,
+    ADD CONSTRAINT fk_roles_created_by
+    FOREIGN KEY(organization_id, created_by)
+    REFERENCES users(organization_id, id)
     ON DELETE SET NULL
-  `);
+    `);
 };
 
 exports.down = async function (knex) {

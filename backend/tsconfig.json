@@ -7,10 +7,9 @@
     // Environment Settings
     // See also https://aka.ms/tsconfig/module
     "module": "nodenext",
-    "target": "esnext",
-    "types": [
-      "node"
-    ],
+    "moduleResolution": "nodenext",
+    "allowSyntheticDefaultImports": true,
+    //"types": [      "node"    ],
     // For nodejs:
     // "lib": ["esnext"],
     // "types": ["node"],
@@ -37,5 +36,11 @@
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
     "skipLibCheck": true,
-  }
+    "esModuleInterop": true,
+    "rootDir": "src",
+    "outDir": "dist"
+  },
+  "include": [
+    "src"
+  ]
 }

@@ -15,13 +15,10 @@ exports.up = async function (knex) {
 
     // === Assignment metadata ===
     table.timestamp('assigned_at').defaultTo(knex.fn.now());
-    table
-      .bigInteger('assigned_by')
+    table.bigInteger('assigned_by')
       .unsigned()
-      .nullable()
-      .references('id')
-      .inTable('users')
-      .onDelete('SET NULL');
+      .nullable();
+    // FK handled below in RAW for composite constraint
 
     // === Primary key (as defined in schema) ===
     table.primary(['organization_id', 'user_id', 'role_id']);
@@ -52,7 +49,11 @@ exports.up = async function (knex) {
       ADD CONSTRAINT fk_user_roles_role
         FOREIGN KEY (organization_id, role_id)
         REFERENCES roles(organization_id, id)
-        ON DELETE CASCADE
+        ON DELETE CASCADE,
+      ADD CONSTRAINT fk_user_roles_assigned_by
+        FOREIGN KEY (organization_id, assigned_by)
+        REFERENCES users(organization_id, id)
+        ON DELETE SET NULL
   `);
 };
 

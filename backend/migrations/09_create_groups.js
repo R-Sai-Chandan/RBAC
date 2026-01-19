@@ -17,8 +17,7 @@ exports.up = async function (knex) {
     table.text('description');
     table.boolean('is_active').defaultTo(true);
     table.timestamp('created_at').defaultTo(knex.fn.now());
-    table.bigInteger('created_by').unsigned()
-      .references('id').inTable('users').onDelete('SET NULL');
+    table.bigInteger('created_by').unsigned().nullable(); // FK via RAW
 
     // === Primary Key / Unique Constraints ===
     table.unique(['organization_id', 'name']); // unique group name within organization
@@ -29,11 +28,24 @@ exports.up = async function (knex) {
   });
 
   // === Foreign Keys for relationships outside this table ===
-  await knex.schema.alterTable('users', (table) => {
-    table.foreign('primary_group_id')
-      .references('id').inTable('groups')
-      .onDelete('SET NULL');
-  });
+  // === Foreign Keys ===
+  await knex.raw(`
+    -- created_by must be in SAME organization
+    ALTER TABLE groups
+    ADD CONSTRAINT fk_groups_created_by
+    FOREIGN KEY (organization_id, created_by)
+    REFERENCES users(organization_id, id)
+    ON DELETE SET NULL;
+
+    -- users.primary_group_id
+    -- Prompt Rule: "Reference groups WITHOUT forcing same-organization constraint"
+    -- So we use SINGLE foreign key to groups(id)
+    ALTER TABLE users
+    ADD CONSTRAINT fk_users_primary_group
+    FOREIGN KEY (primary_group_id)
+    REFERENCES groups(id)
+    ON DELETE SET NULL;
+  `);
 };
 
 exports.down = async function (knex) {

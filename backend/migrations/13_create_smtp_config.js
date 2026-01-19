@@ -5,7 +5,7 @@
  * Supports multiple configurations with audit metadata and encryption type enforcement.
  */
 
-exports.up = async function(knex) {
+exports.up = async function (knex) {
   await knex.schema.createTable('smtp_config', (table) => {
     // === Core identifiers ===
     table.bigIncrements('id').primary();
@@ -32,11 +32,11 @@ exports.up = async function(knex) {
     // === Constraints ===
     table.check(`
       encryption IN ('none', 'tls', 'ssl')
-    `, [], 'valid_smtp_encryption');
+    `, [], 'smtp_config_encryption_check');
   });
 };
 
-exports.down = async function(knex) {
+exports.down = async function (knex) {
   await knex.schema.dropTableIfExists('smtp_config');
 };
 

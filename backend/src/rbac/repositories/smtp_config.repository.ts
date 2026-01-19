@@ -1,44 +1,31 @@
-/**
- * SmtpConfigRepository
- * 
- * Data access layer for SmtpConfig entities.
- * All operations scoped to organizationId for multi-tenant isolation.
- */
 
+import { Pool } from 'pg';
+import { BaseRepository } from './base.repository';
 import { SmtpConfig } from '../models/smtp_config.model';
 
 export interface ISmtpConfigRepository {
-    /**
-     * Find SMTP config by ID within organization
-     * @throws SmtpConfigNotFoundError
-     */
-    findById(organizationId: string, configId: string): Promise<SmtpConfig | null>;
-
-    /**
-     * List all SMTP configs in organization
-     */
+    create(organizationId: string, data: any): Promise<SmtpConfig>;
+    update(organizationId: string, id: string, data: any): Promise<SmtpConfig>;
+    delete(organizationId: string, id: string): Promise<void>;
+    findById(organizationId: string, id: string): Promise<SmtpConfig | null>;
     findAllByOrganization(organizationId: string): Promise<SmtpConfig[]>;
+    findActiveByOrganization(organizationId: string): Promise<SmtpConfig | null>; // Assuming single active
+}
 
-    /**
-     * Find active SMTP config for organization
-     */
-    findActiveByOrganization(organizationId: string): Promise<SmtpConfig | null>;
+export class SmtpConfigRepository extends BaseRepository<SmtpConfig> implements ISmtpConfigRepository {
+    constructor(pool: InstanceType<typeof Pool>) {
+        super(pool, 'smtp_configs');
+    }
 
-    /**
-     * Create a new SMTP config
-     * @throws SmtpConfigCreationError
-     */
-    create(organizationId: string, data: Omit<SmtpConfig, 'id' | 'organization_id'>): Promise<SmtpConfig>;
+    async findAllByOrganization(organizationId: string): Promise<SmtpConfig[]> {
+        return this.findAll(organizationId);
+    }
 
-    /**
-     * Update SMTP config
-     * @throws SmtpConfigNotFoundError
-     */
-    update(organizationId: string, configId: string, data: Partial<SmtpConfig>): Promise<SmtpConfig>;
-
-    /**
-     * Delete SMTP config
-     * @throws SmtpConfigNotFoundError
-     */
-    delete(organizationId: string, configId: string): Promise<void>;
+    async findActiveByOrganization(organizationId: string): Promise<SmtpConfig | null> {
+        const res = await this.query(
+            `SELECT * FROM ${this.tableName} WHERE is_active = true AND organization_id = $1 AND deleted_at IS NULL`,
+            [organizationId]
+        );
+        return res.rows[0] || null;
+    }
 }

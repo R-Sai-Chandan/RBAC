@@ -14,15 +14,15 @@ exports.up = async function (knex) {
       .references('id').inTable('organizations').onDelete('CASCADE');
 
     table.bigInteger('user_id').unsigned()
-      .references('id').inTable('users').onDelete('SET NULL');
+      .unsigned().nullable(); // FK via RAW
     table.bigInteger('role_id').unsigned()
-      .references('id').inTable('roles').onDelete('SET NULL');
+      .unsigned().nullable(); // FK via RAW
 
     table.string('action').notNullable(); // replaced enum with string + check
 
     // === Targeted entity ===
     table.bigInteger('module_id').unsigned()
-      .references('id').inTable('modules').onDelete('SET NULL');
+      .references('id').inTable('modules').onDelete('SET NULL'); // Global modules OK
     table.string('entity_type');
     table.bigInteger('entity_id');
 
@@ -45,6 +45,19 @@ exports.up = async function (knex) {
     table.check(`action IN ('create', 'update', 'delete')`, [], 'valid_audit_action');
     table.check(`status IN ('success', 'failed')`, [], 'valid_audit_status');
   });
+
+  await knex.raw(`
+    ALTER TABLE audit_logs
+    ADD CONSTRAINT fk_audit_logs_user
+    FOREIGN KEY (organization_id, user_id)
+    REFERENCES users(organization_id, id)
+    ON DELETE SET NULL,
+
+    ADD CONSTRAINT fk_audit_logs_role
+    FOREIGN KEY (organization_id, role_id)
+    REFERENCES roles(organization_id, id)
+    ON DELETE SET NULL;
+  `);
 };
 
 exports.down = async function (knex) {

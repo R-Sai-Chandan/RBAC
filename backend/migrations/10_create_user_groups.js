@@ -5,7 +5,7 @@
  * Includes multi-tenant composite keys, assigned metadata, and referential integrity.
  */
 
-exports.up = async function(knex) {
+exports.up = async function (knex) {
   // === Core identifiers ===
   await knex.schema.createTable('user_groups', (table) => {
     table.bigInteger('organization_id').unsigned().notNullable();
@@ -14,8 +14,8 @@ exports.up = async function(knex) {
 
     // === Metadata / optional fields ===
     table.timestamp('assigned_at').defaultTo(knex.fn.now());
-    table.bigInteger('assigned_by').unsigned()
-      .references('id').inTable('users').onDelete('SET NULL');
+    table.bigInteger('assigned_by').unsigned().nullable();
+
 
     // === Primary Key / Unique Constraints ===
     table.primary(['organization_id', 'user_id', 'group_id']); // composite PK for multi-tenant isolation
@@ -23,19 +23,28 @@ exports.up = async function(knex) {
 
   // === Foreign Keys (composite for multi-tenant security) ===
   await knex.raw(`
-    ALTER TABLE user_groups
-      ADD CONSTRAINT fk_user_groups_user
-        FOREIGN KEY (organization_id, user_id)
-        REFERENCES users(organization_id, id)
-        ON DELETE CASCADE,
-      ADD CONSTRAINT fk_user_groups_group
-        FOREIGN KEY (organization_id, group_id)
-        REFERENCES groups(organization_id, id)
-        ON DELETE CASCADE
-  `);
+  ALTER TABLE user_groups
+    ADD CONSTRAINT fk_user_groups_user
+      FOREIGN KEY (organization_id, user_id)
+      REFERENCES users(organization_id, id)
+      ON DELETE CASCADE,
+    
+    -- Group reference allows CROSS-ORGANIZATION (as per design)
+    -- So we do NOT include organization_id in this key
+    ADD CONSTRAINT fk_user_groups_group
+      FOREIGN KEY (group_id)
+      REFERENCES groups(id)
+      ON DELETE CASCADE,
+
+    ADD CONSTRAINT fk_user_groups_assigned_by
+      FOREIGN KEY (organization_id, assigned_by)
+      REFERENCES users(organization_id, id)
+      ON DELETE SET NULL
+`);
+
 };
 
-exports.down = async function(knex) {
+exports.down = async function (knex) {
   await knex.schema.dropTableIfExists('user_groups');
 };
 

@@ -99,6 +99,13 @@ export interface IAuthSessionService {
      * Validate session is active and not expired
      */
     isValid(organizationId: string, sessionId: string): Promise<boolean>;
+
+    /**
+     * Resolve session from ID alone (Global Lookup)
+     * Used by Authentication Middleware
+     * @throws RBACInternalError (Session Not Found)
+     */
+    resolveSession(sessionId: string): Promise<AuthSession>;
 }
 
 /**
@@ -261,5 +268,27 @@ export class AuthSessionService implements IAuthSessionService {
             // Fail closed
             return false;
         }
+    }
+
+    async resolveSession(sessionId: string): Promise<AuthSession> {
+        const session = await this.authSessionRepository.findBySessionIdGlobal(sessionId);
+
+        if (!session) {
+            throw new RBACInternalError(`Session not found: ${sessionId}`);
+        }
+
+        // Validate Status
+        if (session.logout_at !== null) {
+            throw new RBACInternalError(`Session is invalid (logged out): ${sessionId}`);
+        }
+
+        // Validate TTL
+        const now = new Date().getTime();
+        const loginTime = new Date(session.login_at).getTime();
+        if ((now - loginTime) > SESSION_TTL_MS) {
+            throw new RBACInternalError(`Session expired: ${sessionId}`);
+        }
+
+        return session;
     }
 }

@@ -5,7 +5,7 @@
  * have access to specific records within an organization and module.
  */
 
-exports.up = async function(knex) {
+exports.up = async function (knex) {
   // === Core identifiers ===
   await knex.schema.createTable('record_shares', (table) => {
     table.bigIncrements('id').primary();
@@ -20,8 +20,7 @@ exports.up = async function(knex) {
     table.bigInteger('shared_with_group_id').unsigned();
     table.bigInteger('shared_with_role_id').unsigned();
     table.timestamp('created_at').defaultTo(knex.fn.now());
-    table.bigInteger('created_by').unsigned()
-      .references('id').inTable('users').onDelete('SET NULL');
+    table.bigInteger('created_by').unsigned().nullable(); // FK via RAW
 
     // === Indexes ===
     table.index(['organization_id', 'module_id', 'record_id']); // for fast lookup of shares
@@ -29,14 +28,36 @@ exports.up = async function(knex) {
   });
 
   // === Foreign Keys ===
-  await knex.schema.alterTable('record_shares', (table) => {
-    table.foreign('shared_with_user_id').references('id').inTable('users').onDelete('CASCADE');
-    table.foreign('shared_with_group_id').references('id').inTable('groups').onDelete('CASCADE');
-    table.foreign('shared_with_role_id').references('id').inTable('roles').onDelete('CASCADE');
-  });
+  // === Foreign Keys ===
+  await knex.raw(`
+    ALTER TABLE record_shares
+    -- Shared With User (Composite)
+    ADD CONSTRAINT fk_record_shares_user
+    FOREIGN KEY (organization_id, shared_with_user_id)
+    REFERENCES users(organization_id, id)
+    ON DELETE CASCADE,
+
+    -- Shared With Role (Composite)
+    ADD CONSTRAINT fk_record_shares_role
+    FOREIGN KEY (organization_id, shared_with_role_id)
+    REFERENCES roles(organization_id, id)
+    ON DELETE CASCADE,
+
+    -- Shared With Group (Single - Cross-Org Allowed)
+    ADD CONSTRAINT fk_record_shares_group
+    FOREIGN KEY (shared_with_group_id)
+    REFERENCES groups(id)
+    ON DELETE CASCADE,
+
+    -- Created By (Composite)
+    ADD CONSTRAINT fk_record_shares_created_by
+    FOREIGN KEY (organization_id, created_by)
+    REFERENCES users(organization_id, id)
+    ON DELETE SET NULL;
+  `);
 };
 
-exports.down = async function(knex) {
+exports.down = async function (knex) {
   await knex.schema.dropTableIfExists('record_shares');
 };
 

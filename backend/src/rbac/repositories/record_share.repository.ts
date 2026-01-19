@@ -1,58 +1,75 @@
-/**
- * RecordShareRepository
- * 
- * Data access layer for RecordShare entities.
- * All operations scoped to organizationId for multi-tenant isolation.
- */
 
+import { Pool } from 'pg';
+import { BaseRepository } from './base.repository';
 import { RecordShare } from '../models/record_share.model';
 
 export interface IRecordShareRepository {
-    /**
-     * Find record share by ID within organization
-     * @throws RecordShareNotFoundError
-     */
-    findById(organizationId: string, shareId: string): Promise<RecordShare | null>;
-
-    /**
-     * Find all shares for a specific record
-     */
-    findByRecord(organizationId: string, moduleId: string, recordId: string): Promise<RecordShare[]>;
-
-    /**
-     * Find all records shared with a user
-     */
+    create(organizationId: string, data: any): Promise<RecordShare>;
+    delete(organizationId: string, id: string): Promise<void>;
+    findById(organizationId: string, id: string): Promise<RecordShare | null>;
+    findByRecord(organizationId: string, entityType: string, entityId: string): Promise<RecordShare[]>;
     findByUser(organizationId: string, userId: string): Promise<RecordShare[]>;
-
-    /**
-     * Find all records shared with a group
-     */
     findByGroup(organizationId: string, groupId: string): Promise<RecordShare[]>;
-
-    /**
-     * Find all records shared with a role
-     */
     findByRole(organizationId: string, roleId: string): Promise<RecordShare[]>;
+    isSharedWithUser(organizationId: string, entityType: string, entityId: string, userId: string): Promise<boolean>;
+    deleteAllByRecord(organizationId: string, entityType: string, entityId: string): Promise<void>;
+}
 
-    /**
-     * Check if record is shared with user
-     */
-    isSharedWithUser(organizationId: string, moduleId: string, recordId: string, userId: string): Promise<boolean>;
+export class RecordShareRepository extends BaseRepository<RecordShare> implements IRecordShareRepository {
+    constructor(pool: InstanceType<typeof Pool>) {
+        super(pool, 'record_shares');
+    }
 
-    /**
-     * Create a new record share
-     * @throws RecordShareCreationError
-     */
-    create(organizationId: string, data: Omit<RecordShare, 'id' | 'organization_id' | 'created_at'>): Promise<RecordShare>;
+    async findByRecord(organizationId: string, entityType: string, entityId: string): Promise<RecordShare[]> {
+        const res = await this.query(
+            `SELECT * FROM ${this.tableName} WHERE entity_type = $1 AND entity_id = $2 AND organization_id = $3 AND deleted_at IS NULL`,
+            [entityType, entityId, organizationId]
+        );
+        return res.rows;
+    }
 
-    /**
-     * Delete record share
-     * @throws RecordShareNotFoundError
-     */
-    delete(organizationId: string, shareId: string): Promise<void>;
+    async findByUser(organizationId: string, userId: string): Promise<RecordShare[]> {
+        const res = await this.query(
+            `SELECT * FROM ${this.tableName} WHERE user_id = $1 AND organization_id = $2 AND deleted_at IS NULL`,
+            [userId, organizationId]
+        );
+        return res.rows;
+    }
 
-    /**
-     * Delete all shares for a record
-     */
-    deleteAllByRecord(organizationId: string, moduleId: string, recordId: string): Promise<void>;
+    async findByGroup(organizationId: string, groupId: string): Promise<RecordShare[]> {
+        const res = await this.query(
+            `SELECT * FROM ${this.tableName} WHERE group_id = $1 AND organization_id = $2 AND deleted_at IS NULL`,
+            [groupId, organizationId]
+        );
+        return res.rows;
+    }
+
+    async findByRole(organizationId: string, roleId: string): Promise<RecordShare[]> {
+        const res = await this.query(
+            `SELECT * FROM ${this.tableName} WHERE role_id = $1 AND organization_id = $2 AND deleted_at IS NULL`,
+            [roleId, organizationId]
+        );
+        return res.rows;
+    }
+
+    async isSharedWithUser(organizationId: string, entityType: string, entityId: string, userId: string): Promise<boolean> {
+        // Complex check: Direct, Group, or Role
+        // This query needs to join with user_roles/groups, but we'll stick to direct user check here for the basic implementation
+        // The service usually aggregates, but if this method is strictly "Is there a share record for this user?", we check direct share.
+        // Or does it imply effective share?
+        // Service likely does logic. Let's start with direct share row existence.
+
+        const res = await this.query(
+            `SELECT 1 FROM ${this.tableName} WHERE entity_type = $1 AND entity_id = $2 AND user_id = $3 AND organization_id = $4 AND deleted_at IS NULL`,
+            [entityType, entityId, userId, organizationId]
+        );
+        return (res.rowCount || 0) > 0;
+    }
+
+    async deleteAllByRecord(organizationId: string, entityType: string, entityId: string): Promise<void> {
+        await this.query(
+            `UPDATE ${this.tableName} SET deleted_at = NOW() WHERE entity_type = $1 AND entity_id = $2 AND organization_id = $3`,
+            [entityType, entityId, organizationId]
+        );
+    }
 }
