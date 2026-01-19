@@ -18,7 +18,7 @@ export type { IAuthSessionService, AuthSessionService } from './services/authSes
 export type { IAuditService, AuditService } from './services/audit.service';
 
 // Middleware
-export type { requirePermission, RBACRequest } from './middleware/requirePermission.middleware';
+export type { requirePermission } from './middleware/requirePermission.middleware';
 
 // Types
 export type { PermissionDecision, createDenyDecision, createAllowDecision } from './types/permission-decision';
@@ -61,4 +61,4 @@ export type { createGroupsRouter } from './routes/groups.routes';
 export type { createSharingRulesRouter } from './routes/sharingRules.routes';
 export type { createRecordSharesRouter } from './routes/recordShares.routes';
 export type { createSmtpConfigRouter } from './routes/smtpConfig.routes';
-export type { createAuthSessionsRouter } from './routes/authSessions.routes';
+export type { createPublicAuthRouter, createProtectedAuthRouter } from './routes/authSessions.routes';

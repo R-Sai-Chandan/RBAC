@@ -2,28 +2,28 @@
  * Sharing Rules Routes
  * 
  * HTTP endpoints for sharing rule management.
- * Delegates to SharingRuleService for all business logic.
+ * Authorization: SETTINGS:manage_sharing permission required.
  */
 
 import { Router, Request, Response } from 'express';
 import { ISharingRuleService } from '../services/sharingRule.service';
-import { RBACInternalError } from '../errors/rbac.errors';
+import { IEvaluationService } from '../services/evaluation.service';
+import { IAuditService } from '../services/audit.service';
+import { requirePermission } from '../middleware/requirePermission.middleware';
 import { getRequiredParam } from './_paramUtils';
 
-export function createSharingRulesRouter(sharingRuleService: ISharingRuleService): Router {
+export function createSharingRulesRouter(
+    sharingRuleService: ISharingRuleService,
+    evaluationService: IEvaluationService,
+    auditService: IAuditService
+): Router {
     const router = Router();
 
-    // GET /sharing-rules - List all sharing rules
-    router.get('/', async (req: Request, res: Response) => {
+    // GET /sharing-rules -> READ
+    router.get('/', requirePermission('SHARING', 'read', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
-            // RBAC RULE: Assert auth context
-            if (!req.user || !req.user.id || !req.user.organizationId) {
-                res.status(401).json({ error: 'Unauthorized', message: 'Missing user context' });
-                return;
-            }
 
-            const organizationId = req.user.organizationId;
-            const rules = await sharingRuleService.listAll(organizationId);
+            const rules = await sharingRuleService.listAll(req.user!.organizationId);
             res.json({ data: rules });
         } catch (error) {
             console.error('Error listing sharing rules:', error);
@@ -31,43 +31,24 @@ export function createSharingRulesRouter(sharingRuleService: ISharingRuleService
         }
     });
 
-    // GET /sharing-rules/:id - Get sharing rule by ID
-    router.get('/:id', async (req: Request, res: Response) => {
+    // GET /sharing-rules/:id -> READ
+    router.get('/:id', requirePermission('SHARING', 'read', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
-            // RBAC RULE: Assert auth context
-            if (!req.user || !req.user.id || !req.user.organizationId) {
-                res.status(401).json({ error: 'Unauthorized', message: 'Missing user context' });
-                return;
-            }
 
-            // PARAM SAFETY: Strict normalization
             const id = getRequiredParam(req.params, 'id');
-
-            const organizationId = req.user.organizationId;
-            const rule = await sharingRuleService.getById(organizationId, id);
+            const rule = await sharingRuleService.getById(req.user!.organizationId, id);
             res.json({ data: rule });
         } catch (error) {
-            if (error instanceof RBACInternalError) {
-                res.status(404).json({ error: 'Not Found', message: error.message });
-                return;
-            }
-            console.error('Error getting sharing rule:', error);
+            console.error('Error fetching sharing rule:', error);
             res.status(500).json({ error: 'Internal Server Error' });
         }
     });
 
-    // POST /sharing-rules - Create new sharing rule
-    router.post('/', async (req: Request, res: Response) => {
+    // POST /sharing-rules -> CREATE
+    router.post('/', requirePermission('SHARING', 'create', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
-            // RBAC RULE: Assert auth context
-            if (!req.user || !req.user.id || !req.user.organizationId) {
-                res.status(401).json({ error: 'Unauthorized', message: 'Missing user context' });
-                return;
-            }
 
-            const organizationId = req.user.organizationId;
-            const actingUserId = req.user.id;
-            const rule = await sharingRuleService.create(organizationId, req.body, actingUserId);
+            const rule = await sharingRuleService.create(req.user!.organizationId, req.body, req.user!.id);
             res.status(201).json({ data: rule });
         } catch (error) {
             console.error('Error creating sharing rule:', error);
@@ -75,21 +56,12 @@ export function createSharingRulesRouter(sharingRuleService: ISharingRuleService
         }
     });
 
-    // PATCH /sharing-rules/:id - Update sharing rule
-    router.patch('/:id', async (req: Request, res: Response) => {
+    // PATCH /sharing-rules/:id -> UPDATE
+    router.patch('/:id', requirePermission('SHARING', 'update', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
-            // RBAC RULE: Assert auth context
-            if (!req.user || !req.user.id || !req.user.organizationId) {
-                res.status(401).json({ error: 'Unauthorized', message: 'Missing user context' });
-                return;
-            }
 
-            // PARAM SAFETY: Strict normalization
             const id = getRequiredParam(req.params, 'id');
-
-            const organizationId = req.user.organizationId;
-            const actingUserId = req.user.id;
-            const rule = await sharingRuleService.update(organizationId, id, req.body, actingUserId);
+            const rule = await sharingRuleService.update(req.user!.organizationId, id, req.body, req.user!.id);
             res.json({ data: rule });
         } catch (error) {
             console.error('Error updating sharing rule:', error);
@@ -97,21 +69,12 @@ export function createSharingRulesRouter(sharingRuleService: ISharingRuleService
         }
     });
 
-    // DELETE /sharing-rules/:id - Delete sharing rule
-    router.delete('/:id', async (req: Request, res: Response) => {
+    // DELETE /sharing-rules/:id -> DELETE
+    router.delete('/:id', requirePermission('SHARING', 'delete', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
-            // RBAC RULE: Assert auth context
-            if (!req.user || !req.user.id || !req.user.organizationId) {
-                res.status(401).json({ error: 'Unauthorized', message: 'Missing user context' });
-                return;
-            }
 
-            // PARAM SAFETY: Strict normalization
             const id = getRequiredParam(req.params, 'id');
-
-            const organizationId = req.user.organizationId;
-            const actingUserId = req.user.id;
-            await sharingRuleService.delete(organizationId, id, actingUserId);
+            await sharingRuleService.delete(req.user!.organizationId, id, req.user!.id);
             res.status(204).send();
         } catch (error) {
             console.error('Error deleting sharing rule:', error);

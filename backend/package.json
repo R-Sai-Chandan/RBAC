@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "nodemon",
+    "build": "tsc",
+    "start": "node dist/server.js"
   },
   "keywords": [],
   "author": "",
@@ -13,6 +15,7 @@
   "dependencies": {
     "@types/bcrypt": "^6.0.0",
     "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
@@ -21,8 +24,11 @@
     "pg-promise": "^12.3.0"
   },
   "devDependencies": {
+    "@types/cookie-parser": "^1.4.10",
+    "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^25.0.8",
+    "@types/pg": "^8.16.0",
     "typescript": "^5.9.3"
   }
 }

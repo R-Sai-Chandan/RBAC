@@ -1,50 +1,80 @@
-/**
- * ProfilePermissionRepository
- * 
- * Data access layer for ProfilePermission assignments.
- * All operations scoped to organizationId for multi-tenant isolation.
- * Supports allow/deny effect management.
- */
 
+import { Pool } from 'pg';
+import { BaseRepository } from './base.repository';
 import { ProfilePermission, ProfilePermissionEffect } from '../models/profile_permission.model';
 
 export interface IProfilePermissionRepository {
-    /**
-     * Find all permissions assigned to a profile
-     */
     findPermissionsByProfile(organizationId: string, profileId: string): Promise<ProfilePermission[]>;
-
-    /**
-     * Find all profiles assigned to a permission
-     */
     findProfilesByPermission(organizationId: string, permissionId: string): Promise<ProfilePermission[]>;
-
-    /**
-     * Get specific profile-permission assignment
-     */
     findAssignment(organizationId: string, profileId: string, permissionId: string): Promise<ProfilePermission | null>;
-
-    /**
-     * Assign permission to profile with effect
-     * @throws ProfilePermissionAssignmentError
-     * @throws DuplicateAssignmentError
-     */
     assign(organizationId: string, profileId: string, permissionId: string, effect: ProfilePermissionEffect): Promise<ProfilePermission>;
-
-    /**
-     * Update permission effect
-     * @throws ProfilePermissionNotFoundError
-     */
     updateEffect(organizationId: string, profileId: string, permissionId: string, effect: ProfilePermissionEffect): Promise<ProfilePermission>;
-
-    /**
-     * Revoke permission from profile
-     * @throws ProfilePermissionNotFoundError
-     */
     revoke(organizationId: string, profileId: string, permissionId: string): Promise<void>;
-
-    /**
-     * Revoke all permissions from profile
-     */
     revokeAllByProfile(organizationId: string, profileId: string): Promise<void>;
+}
+
+export class ProfilePermissionRepository extends BaseRepository<ProfilePermission> implements IProfilePermissionRepository {
+    constructor(pool: InstanceType<typeof Pool>) {
+        super(pool, 'profile_permissions');
+    }
+
+    async findPermissionsByProfile(organizationId: string, profileId: string): Promise<ProfilePermission[]> {
+        const res = await this.query(
+            `SELECT * FROM ${this.tableName} WHERE profile_id = $1 AND organization_id = $2 AND deleted_at IS NULL`,
+            [profileId, organizationId]
+        );
+        return res.rows;
+    }
+
+    async findProfilesByPermission(organizationId: string, permissionId: string): Promise<ProfilePermission[]> {
+        const res = await this.query(
+            `SELECT * FROM ${this.tableName} WHERE permission_id = $1 AND organization_id = $2 AND deleted_at IS NULL`,
+            [permissionId, organizationId]
+        );
+        return res.rows;
+    }
+
+    async findAssignment(organizationId: string, profileId: string, permissionId: string): Promise<ProfilePermission | null> {
+        const res = await this.query(
+            `SELECT * FROM ${this.tableName} WHERE profile_id = $1 AND permission_id = $2 AND organization_id = $3 AND deleted_at IS NULL`,
+            [profileId, permissionId, organizationId]
+        );
+        return res.rows[0] || null;
+    }
+
+    async assign(organizationId: string, profileId: string, permissionId: string, effect: ProfilePermissionEffect): Promise<ProfilePermission> {
+        const query = `
+            INSERT INTO ${this.tableName} (organization_id, profile_id, permission_id, effect)
+            VALUES ($1, $2, $3, $4)
+            RETURNING *
+        `;
+        const res = await this.query(query, [organizationId, profileId, permissionId, effect]);
+        return res.rows[0]!;
+    }
+
+    async updateEffect(organizationId: string, profileId: string, permissionId: string, effect: ProfilePermissionEffect): Promise<ProfilePermission> {
+        const query = `
+            UPDATE ${this.tableName}
+            SET effect = $4, updated_at = NOW()
+            WHERE profile_id = $1 AND permission_id = $2 AND organization_id = $3
+            RETURNING *
+        `;
+        const res = await this.query(query, [profileId, permissionId, organizationId, effect]);
+        if (!res.rows.length) throw new Error('Assignment not found');
+        return res.rows[0]!;
+    }
+
+    async revoke(organizationId: string, profileId: string, permissionId: string): Promise<void> {
+        await this.query(
+            `UPDATE ${this.tableName} SET deleted_at = NOW() WHERE profile_id = $1 AND permission_id = $2 AND organization_id = $3`,
+            [profileId, permissionId, organizationId]
+        );
+    }
+
+    async revokeAllByProfile(organizationId: string, profileId: string): Promise<void> {
+        await this.query(
+            `UPDATE ${this.tableName} SET deleted_at = NOW() WHERE profile_id = $1 AND organization_id = $2`,
+            [profileId, organizationId]
+        );
+    }
 }

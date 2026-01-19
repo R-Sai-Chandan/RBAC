@@ -2,7 +2,7 @@
  * Auth Sessions Routes
  * 
  * HTTP endpoints for authentication session management.
- * Includes Login and Logout flows.
+ * Split into Public (Login) and Protected (Logout, Management) routers.
  */
 
 import { Router, Request, Response } from 'express';
@@ -12,7 +12,10 @@ import { RBACInternalError } from '../errors/rbac.errors';
 import { getRequiredParam } from './_paramUtils';
 import { verifyPassword } from '../utils/crypto.utils';
 
-export function createAuthSessionsRouter(
+// ---------------------------------------------------------------------------
+// PUBLIC ROUTER (Login) - No Authentication Required
+// ---------------------------------------------------------------------------
+export function createPublicAuthRouter(
     authSessionService: IAuthSessionService,
     userRepository: IUserRepository
 ): Router {
@@ -21,27 +24,31 @@ export function createAuthSessionsRouter(
     // PUBLIC: Login
     router.post('/login', async (req: Request, res: Response) => {
         try {
-            const { organizationId, username, password } = req.body;
+            const { identifier, username, password } = req.body;
+            const loginIdentifier = identifier || username;
 
             // 1. Basic Validation
-            if (!organizationId || !username || !password) {
+            if (!loginIdentifier || !password) {
                 res.status(400).json({
                     error: 'Bad Request',
-                    message: 'Missing credentials. Required: organizationId, username, password'
+                    message: 'Missing credentials. Required: identifier/username, password'
                 });
                 return;
             }
 
-            // 2. Find User
-            const user = await userRepository.findByUsername(organizationId, username);
+            // 2. Find User globally (across all orgs)
+            let user = await userRepository.findByUsernameGlobal(loginIdentifier);
             if (!user) {
-                // Fail generic (prevent enumeration)
+                user = await userRepository.findByEmailGlobal(loginIdentifier);
+            }
+            if (!user) {
                 res.status(401).json({ error: 'Unauthorized', message: 'Invalid credentials' });
                 return;
             }
 
+            const organizationId = user.organization_id;
+
             // 3. Verify Status
-            // Check if user is active (assuming status is UserStatus, comparing string value)
             if (user.status !== 'active') {
                 res.status(401).json({ error: 'Unauthorized', message: 'Account inactive' });
                 return;
@@ -67,15 +74,24 @@ export function createAuthSessionsRouter(
                 ...(userAgent ? { user_agent: userAgent } : {})
             });
 
-            // 6. Return Session ID
-            const fullName = `${user.first_name || ''} ${user.last_name}`.trim();
+            // 6. Set HTTP-Only Cookie
+            const isProd = process.env.NODE_ENV === 'production';
+            res.cookie('sessionId', session.id, {
+                httpOnly: true,
+                secure: isProd,
+                sameSite: 'strict',
+                path: '/rbac',
+                maxAge: 24 * 60 * 60 * 1000
+            });
+
+            // 7. Return User Context
+            const fullName = `${user.first_name || ''} ${user.last_name || ''}`.trim();
             res.status(201).json({
                 data: {
-                    sessionId: session.id,
                     user: {
                         id: user.id,
                         username: user.username,
-                        fullName: fullName,
+                        fullName: fullName || user.username,
                         email: user.primary_email
                     }
                 }
@@ -83,22 +99,36 @@ export function createAuthSessionsRouter(
 
         } catch (error) {
             console.error('Login Error:', error);
-            // Internal errors might bubble up; catch them to ensure no leakage
             res.status(500).json({ error: 'Internal Server Error' });
         }
     });
 
+    return router;
+}
+
+// ---------------------------------------------------------------------------
+// PROTECTED ROUTER (Logout, Management) - Authentication Required
+// ---------------------------------------------------------------------------
+export function createProtectedAuthRouter(
+    authSessionService: IAuthSessionService
+): Router {
+    const router = Router();
+
     // POST /logout - Logout current session
-    // Requires Authentication Middleware to have run
     router.post('/logout', async (req: Request, res: Response) => {
         try {
-            // RBAC RULE: Assert auth context
-            if (!req.user || !req.user.id || !req.user.organizationId || !req.user.sessionId) {
-                res.status(401).json({ error: 'Unauthorized', message: 'Missing user context' });
+            const { organizationId, sessionId } = req.user!;
+
+            if (!sessionId) {
+                res.status(400).json({ error: 'Bad Request', message: 'No session context' });
                 return;
             }
 
-            await authSessionService.logout(req.user.organizationId, req.user.sessionId);
+            await authSessionService.logout(organizationId, sessionId);
+
+            // Clear Cookie
+            res.clearCookie('sessionId', { path: '/rbac' });
+
             res.status(200).json({ message: 'Logged out successfully' });
 
         } catch (error) {
@@ -107,19 +137,12 @@ export function createAuthSessionsRouter(
         }
     });
 
-    // ------------------------------------------------------------
-    // ADMIN / MANAGEMENT ROUTES (Requires scoped permissions + auth)
-    // ------------------------------------------------------------
-
     // GET /auth-sessions - List sessions for current user
-    router.get('/', async (req: Request, res: Response) => {
+    router.get('/sessions', async (req: Request, res: Response) => {
         try {
-            if (!req.user || !req.user.id || !req.user.organizationId) {
-                res.status(401).json({ error: 'Unauthorized', message: 'Missing user context' });
-                return;
-            }
+            const { id: userId, organizationId } = req.user!;
 
-            const sessions = await authSessionService.listActiveByUser(req.user.organizationId, req.user.id);
+            const sessions = await authSessionService.listActiveByUser(organizationId, userId);
             res.json({ data: sessions });
         } catch (error) {
             console.error('Error listing auth sessions:', error);
@@ -128,18 +151,15 @@ export function createAuthSessionsRouter(
     });
 
     // GET /auth-sessions/:id - Get session by ID
-    router.get('/:id', async (req: Request, res: Response) => {
+    router.get('/sessions/:id', async (req: Request, res: Response) => {
         try {
-            if (!req.user || !req.user.id || !req.user.organizationId) {
-                res.status(401).json({ error: 'Unauthorized', message: 'Missing user context' });
-                return;
-            }
+            const { id: userId, organizationId } = req.user!;
 
             const id = getRequiredParam(req.params, 'id');
-            const session = await authSessionService.getById(req.user.organizationId, id);
+            const session = await authSessionService.getById(organizationId, id);
 
             // SECURITY: Ensure user owns this session OR has admin permission (omitted for now)
-            if (session.user_id !== req.user.id) {
+            if (session.user_id !== userId) {
                 res.status(403).json({ error: 'Forbidden', message: 'Access denied to this session' });
                 return;
             }
@@ -156,24 +176,21 @@ export function createAuthSessionsRouter(
     });
 
     // DELETE /auth-sessions/:id - Revoke session
-    router.delete('/:id', async (req: Request, res: Response) => {
+    router.delete('/sessions/:id', async (req: Request, res: Response) => {
         try {
-            if (!req.user || !req.user.id || !req.user.organizationId) {
-                res.status(401).json({ error: 'Unauthorized', message: 'Missing user context' });
-                return;
-            }
+            const { id: userId, organizationId } = req.user!;
 
             const id = getRequiredParam(req.params, 'id');
 
             // SECURITY: Ensure user owns this session OR has admin permission
             // For now, restrictive Owner-Only unless expanded
-            const session = await authSessionService.getById(req.user.organizationId, id);
-            if (session.user_id !== req.user.id) {
+            const session = await authSessionService.getById(organizationId, id);
+            if (session.user_id !== userId) {
                 res.status(403).json({ error: 'Forbidden', message: 'Access denied to this session' });
                 return;
             }
 
-            await authSessionService.revoke(req.user.organizationId, id, req.user.id);
+            await authSessionService.revoke(organizationId, id, userId);
             res.status(204).send();
         } catch (error) {
             console.error('Error revoking session:', error);
