@@ -4,9 +4,10 @@ import { BaseRepository } from './base.repository';
 import { Module } from '../models/module.model';
 
 export interface IModuleRepository {
-    findAll(filters?: any): Promise<Module[]>;
+    findAll(organizationId: string, filters?: any): Promise<Module[]>;
     findByCode(organizationId: string, code: string): Promise<Module | null>;
-    findById(organizationId: string, id: string): Promise<Module | null>; // Exposed from Base
+    findById(organizationId: string, id: string): Promise<Module | null>;
+    create(organizationId: string, data: Partial<Module>): Promise<Module>;
 }
 
 export class ModuleRepository extends BaseRepository<Module> implements IModuleRepository {
@@ -15,21 +16,16 @@ export class ModuleRepository extends BaseRepository<Module> implements IModuleR
     }
 
     async findByCode(organizationId: string, code: string): Promise<Module | null> {
-        // Even if modules are global, we might validate org or just ignore it.
-        // For consistency with BaseRepository and Service layer, we accept it.
-        // Assuming modules are global system metadata:
         const res = await this.query(
-            `SELECT * FROM ${this.tableName} WHERE code = $1 AND deleted_at IS NULL`,
-            [code]
+            `SELECT * FROM ${this.tableName} WHERE code = $1 AND organization_id = $2 AND deleted_at IS NULL`,
+            [code, organizationId]
         );
         return res.rows[0] || null;
     }
 
-    // Override to ignore orgId if modules are global, or just use Base implementation if mixed.
-    async findAll(filters?: any): Promise<Module[]> {
-        const res = await this.query(
-            `SELECT * FROM ${this.tableName} WHERE deleted_at IS NULL`
-        );
-        return res.rows;
+    async findAll(organizationId: string, filters?: any): Promise<Module[]> {
+        // Use BaseRepository implementation or custom query
+        // BaseRepository.findAll(orgId) matches signature mostly
+        return super.findAll(organizationId, filters);
     }
 }
