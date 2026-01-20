@@ -40,6 +40,9 @@ import { SharingRuleService } from './rbac/services/sharingRule.service';
 import { RecordShareService } from './rbac/services/recordShare.service';
 import { SmtpConfigService } from './rbac/services/smtpConfig.service';
 import { AuditService } from './rbac/services/audit.service';
+import { OrganizationService } from './rbac/services/organization.service';
+import { ModuleSeederService } from './rbac/services/moduleSeeder.service';
+import { OrganizationRepository } from './rbac/repositories/organization.repository';
 
 // Router
 import { createRBACRouter } from './rbac/routes';
@@ -126,6 +129,11 @@ async function startServer() {
     const sharingRuleService = new SharingRuleService(sharingRuleRepository);
     const recordShareService = new RecordShareService(recordShareRepository);
     const smtpConfigService = new SmtpConfigService(smtpConfigRepository);
+
+    // Organization Service (Seeding & Creation)
+    const organizationRepository = new OrganizationRepository(pool);
+    const moduleSeederService = new ModuleSeederService(moduleRepository);
+    const organizationService = new OrganizationService(organizationRepository, moduleSeederService);
 
     // MOUNTING The RBAC Router
     app.use('/rbac', createRBACRouter({

@@ -1,23 +1,20 @@
 import { useState, useEffect } from 'react';
 import api from '../api/api';
 import { usePermissions } from '../hooks/usePermissions';
+import type { Role } from '../types/models';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
 import { FormInput } from '../components/FormInput';
 
-interface Role {
-    id: string;
-    name: string;
-    description: string;
-    parent_role_id: string | null;
-    children?: Role[];
+interface RoleNode extends Role {
+    children?: RoleNode[];
 }
 
 export default function RolesPage() {
-    const [roles, setRoles] = useState<Role[]>([]);
+    const [roles, setRoles] = useState<RoleNode[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingRole, setEditingRole] = useState<Role | null>(null);
+    const [editingRole, setEditingRole] = useState<RoleNode | null>(null);
     const [formData, setFormData] = useState({ name: '', description: '', parentRoleId: '' });
     const { canCreate, canUpdate, canDelete } = usePermissions('ROLES');
 
@@ -36,15 +33,16 @@ export default function RolesPage() {
             .finally(() => setLoading(false));
     };
 
-    const buildTree = (roles: any[]): Role[] => {
-        const map = new Map();
-        const roots: Role[] = [];
-        const list = roles.map(r => ({ ...r, children: [] }));
+    const buildTree = (roles: Role[]): RoleNode[] => {
+        const map = new Map<string, RoleNode>();
+        const roots: RoleNode[] = [];
+        // Clone and cast
+        const list: RoleNode[] = roles.map(r => ({ ...r, children: [] }));
 
         list.forEach(r => map.set(r.id, r));
         list.forEach(r => {
             if (r.parent_role_id && map.has(r.parent_role_id)) {
-                map.get(r.parent_role_id).children.push(r);
+                map.get(r.parent_role_id)!.children!.push(r);
             } else {
                 roots.push(r);
             }
@@ -101,8 +99,8 @@ export default function RolesPage() {
         setIsModalOpen(true);
     };
 
-    const getAllRoles = (nodes: Role[]): Role[] => {
-        let list: Role[] = [];
+    const getAllRoles = (nodes: RoleNode[]): RoleNode[] => {
+        let list: RoleNode[] = [];
         nodes.forEach(n => {
             list.push(n);
             if (n.children) list = list.concat(getAllRoles(n.children));
@@ -111,7 +109,7 @@ export default function RolesPage() {
     };
     const flatRoles = getAllRoles(roles);
 
-    const RoleNode = ({ role, level }: { role: Role, level: number }) => (
+    const RoleNode = ({ role, level }: { role: RoleNode, level: number }) => (
         <div className={`table-tree-node table-tree-node--level-${level}`}>
             <div className="table-tree-node__item">
                 <div className="table-tree-node__content">
@@ -146,13 +144,13 @@ export default function RolesPage() {
                     <FormInput
                         label="Role Name"
                         value={formData.name}
-                        onChange={(e: any) => setFormData({ ...formData, name: e.target.value })}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, name: e.target.value })}
                         required
                     />
                     <FormInput
                         label="Description"
                         value={formData.description}
-                        onChange={(e: any) => setFormData({ ...formData, description: e.target.value })}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, description: e.target.value })}
                     />
 
                     <div className="form-group">

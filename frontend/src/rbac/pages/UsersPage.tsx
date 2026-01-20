@@ -1,17 +1,20 @@
+
 import { useState, useEffect } from 'react';
 import api from '../api/api';
 import { usePermissions } from '../hooks/usePermissions';
+import type { User, Role } from '../types/models';
 import { Table } from '../components/Table';
+import type { Column } from '../components/Table';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
 import { FormInput } from '../components/FormInput';
 
 export default function UsersPage() {
-    const [users, setUsers] = useState<any[]>([]);
-    const [roles, setRoles] = useState<any[]>([]);
+    const [users, setUsers] = useState<User[]>([]);
+    const [roles, setRoles] = useState<Role[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingUser, setEditingUser] = useState<any | null>(null);
+    const [editingUser, setEditingUser] = useState<User | null>(null);
     const [formData, setFormData] = useState({ username: '', email: '', firstName: '', lastName: '', roleIds: [] as string[] });
     const [filterStatus, setFilterStatus] = useState('active');
     const { canCreate, canUpdate, canDelete } = usePermissions('USERS');
@@ -52,7 +55,7 @@ export default function UsersPage() {
         }
     };
 
-    const handleDelete = async (user: any) => {
+    const handleDelete = async (user: User) => {
         if (!confirm(`Are you sure you want to deactivate ${user.username}?`)) return;
         try {
             await api.delete(`/users/${user.id}`);
@@ -69,9 +72,9 @@ export default function UsersPage() {
         setIsModalOpen(true);
     };
 
-    const openEdit = (user: any) => {
+    const openEdit = (user: User) => {
         setEditingUser(user);
-        const currentRoleIds = user.roles ? user.roles.map((r: any) => r.id || r) : [];
+        const currentRoleIds = user.roles ? user.roles.map((r: Role) => r.id) : [];
         setFormData({
             username: user.username,
             email: user.email,
@@ -82,16 +85,16 @@ export default function UsersPage() {
         setIsModalOpen(true);
     };
 
-    const columns = [
+    const columns: Column<User>[] = [
         { header: 'Username', accessor: 'username' },
         { header: 'Email', accessor: 'email' },
         { header: 'Status', accessor: 'status' },
         {
             header: 'Actions',
-            accessor: (row: any) => (
+            accessor: (row: User) => (
                 <div className="table__actions">
-                    {canUpdate && <Button variant="secondary" onClick={(e: any) => { e.stopPropagation(); openEdit(row); }}>Edit</Button>}
-                    {canDelete && row.status === 'active' && <Button variant="danger" onClick={(e: any) => { e.stopPropagation(); handleDelete(row); }}>Deactivate</Button>}
+                    {canUpdate && <Button variant="secondary" onClick={(e: React.MouseEvent) => { e.stopPropagation(); openEdit(row); }}>Edit</Button>}
+                    {canDelete && row.status === 'active' && <Button variant="danger" onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleDelete(row); }}>Deactivate</Button>}
                 </div>
             )
         }
@@ -121,25 +124,25 @@ export default function UsersPage() {
                     <FormInput
                         label="Username"
                         value={formData.username}
-                        onChange={(e: any) => setFormData({ ...formData, username: e.target.value })}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, username: e.target.value })}
                         required
                     />
                     <FormInput
                         label="Email"
                         type="email"
                         value={formData.email}
-                        onChange={(e: any) => setFormData({ ...formData, email: e.target.value })}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, email: e.target.value })}
                         required
                     />
                     <FormInput
                         label="First Name"
                         value={formData.firstName}
-                        onChange={(e: any) => setFormData({ ...formData, firstName: e.target.value })}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, firstName: e.target.value })}
                     />
                     <FormInput
                         label="Last Name"
                         value={formData.lastName}
-                        onChange={(e: any) => setFormData({ ...formData, lastName: e.target.value })}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, lastName: e.target.value })}
                     />
 
                     <div className="form-group">
@@ -153,7 +156,7 @@ export default function UsersPage() {
                             }}
                             className="form-select form-select--multiple"
                         >
-                            {roles.map((r: any) => (
+                            {roles.map((r: Role) => (
                                 <option key={r.id} value={r.id}>{r.name}</option>
                             ))}
                         </select>
