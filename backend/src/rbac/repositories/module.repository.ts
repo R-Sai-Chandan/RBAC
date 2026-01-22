@@ -17,7 +17,7 @@ export class ModuleRepository extends BaseRepository<Module> implements IModuleR
 
     async findByCode(organizationId: string, code: string): Promise<Module | null> {
         const res = await this.query(
-            `SELECT * FROM ${this.tableName} WHERE code = $1 AND organization_id = $2 AND deleted_at IS NULL`,
+            `SELECT * FROM ${this.tableName} WHERE code = $1 AND organization_id = $2 `,
             [code, organizationId]
         );
         return res.rows[0] || null;

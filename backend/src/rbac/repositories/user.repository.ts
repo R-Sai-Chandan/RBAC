@@ -23,7 +23,7 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
 
     async findByUsername(organizationId: string, username: string): Promise<User | null> {
         const res = await this.query(
-            `SELECT * FROM ${this.tableName} WHERE username = $1 AND organization_id = $2 AND deleted_at IS NULL`,
+            `SELECT * FROM ${this.tableName} WHERE username = $1 AND organization_id = $2 `,
             [username, organizationId]
         );
         return res.rows[0] || null;
@@ -31,7 +31,7 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
 
     async findByEmail(organizationId: string, email: string): Promise<User | null> {
         const res = await this.query(
-            `SELECT * FROM ${this.tableName} WHERE primary_email = $1 AND organization_id = $2 AND deleted_at IS NULL`,
+            `SELECT * FROM ${this.tableName} WHERE primary_email = $1 AND organization_id = $2 `,
             [email, organizationId]
         );
         return res.rows[0] || null;
@@ -43,7 +43,7 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
 
     async findByUsernameGlobal(username: string): Promise<User | null> {
         const res = await this.query(
-            `SELECT * FROM ${this.tableName} WHERE username = $1 AND deleted_at IS NULL LIMIT 1`,
+            `SELECT * FROM ${this.tableName} WHERE username = $1  LIMIT 1`,
             [username]
         );
         return res.rows[0] || null;
@@ -51,7 +51,7 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
 
     async findByEmailGlobal(email: string): Promise<User | null> {
         const res = await this.query(
-            `SELECT * FROM ${this.tableName} WHERE primary_email = $1 AND deleted_at IS NULL LIMIT 1`,
+            `SELECT * FROM ${this.tableName} WHERE primary_email = $1 LIMIT 1`,
             [email]
         );
         return res.rows[0] || null;

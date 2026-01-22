@@ -20,7 +20,7 @@ export class ProfileRepository extends BaseRepository<Profile> implements IProfi
 
     async findByCode(organizationId: string, code: string): Promise<Profile | null> {
         const res = await this.query(
-            `SELECT * FROM ${this.tableName} WHERE code = $1 AND organization_id = $2 AND deleted_at IS NULL`,
+            `SELECT * FROM ${this.tableName} WHERE code = $1 AND organization_id = $2`,
             [code, organizationId]
         );
         return res.rows[0] || null;
@@ -32,7 +32,7 @@ export class ProfileRepository extends BaseRepository<Profile> implements IProfi
 
     async findActiveByOrganization(organizationId: string): Promise<Profile[]> {
         const res = await this.query(
-            `SELECT * FROM ${this.tableName} WHERE is_active = true AND organization_id = $1 AND deleted_at IS NULL`,
+            `SELECT * FROM ${this.tableName} WHERE is_active = true AND organization_id = $1`,
             [organizationId]
         );
         return res.rows;

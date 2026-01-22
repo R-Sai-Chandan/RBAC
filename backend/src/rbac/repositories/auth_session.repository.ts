@@ -21,7 +21,7 @@ export class AuthSessionRepository extends BaseRepository<AuthSession> implement
 
     async findAllByUser(organizationId: string, userId: string): Promise<AuthSession[]> {
         const res = await this.query(
-            `SELECT * FROM ${this.tableName} WHERE user_id = $1 AND organization_id = $2 AND deleted_at IS NULL`,
+            `SELECT * FROM ${this.tableName} WHERE user_id = $1 AND organization_id = $2`,
             [userId, organizationId]
         );
         return res.rows;
@@ -30,7 +30,7 @@ export class AuthSessionRepository extends BaseRepository<AuthSession> implement
     async findActiveByUser(organizationId: string, userId: string): Promise<AuthSession[]> {
         // active = logout_at is null (and not deleted)
         const res = await this.query(
-            `SELECT * FROM ${this.tableName} WHERE user_id = $1 AND organization_id = $2 AND logout_at IS NULL AND deleted_at IS NULL`,
+            `SELECT * FROM ${this.tableName} WHERE user_id = $1 AND organization_id = $2 AND logout_at IS NULL `,
             [userId, organizationId]
         );
         return res.rows;
@@ -38,14 +38,14 @@ export class AuthSessionRepository extends BaseRepository<AuthSession> implement
 
     async deleteAllByUser(organizationId: string, userId: string): Promise<void> {
         await this.query(
-            `UPDATE ${this.tableName} SET deleted_at = NOW() WHERE user_id = $1 AND organization_id = $2`,
+            `DELETE FROM ${this.tableName} WHERE user_id = $1 AND organization_id = $2`,
             [userId, organizationId]
         );
     }
 
     async findBySessionIdGlobal(sessionId: string): Promise<AuthSession | null> {
         const res = await this.query(
-            `SELECT * FROM ${this.tableName} WHERE id = $1 AND deleted_at IS NULL`,
+            `SELECT * FROM ${this.tableName} WHERE id = $1 `,
             [sessionId]
         );
         return res.rows[0] || null;

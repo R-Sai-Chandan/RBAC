@@ -22,7 +22,7 @@ export class RecordShareRepository extends BaseRepository<RecordShare> implement
 
     async findByRecord(organizationId: string, entityType: string, entityId: string): Promise<RecordShare[]> {
         const res = await this.query(
-            `SELECT * FROM ${this.tableName} WHERE entity_type = $1 AND entity_id = $2 AND organization_id = $3 AND deleted_at IS NULL`,
+            `SELECT * FROM ${this.tableName} WHERE entity_type = $1 AND entity_id = $2 AND organization_id = $3`,
             [entityType, entityId, organizationId]
         );
         return res.rows;
@@ -30,7 +30,7 @@ export class RecordShareRepository extends BaseRepository<RecordShare> implement
 
     async findByUser(organizationId: string, userId: string): Promise<RecordShare[]> {
         const res = await this.query(
-            `SELECT * FROM ${this.tableName} WHERE user_id = $1 AND organization_id = $2 AND deleted_at IS NULL`,
+            `SELECT * FROM ${this.tableName} WHERE user_id = $1 AND organization_id = $2 `,
             [userId, organizationId]
         );
         return res.rows;
@@ -38,7 +38,7 @@ export class RecordShareRepository extends BaseRepository<RecordShare> implement
 
     async findByGroup(organizationId: string, groupId: string): Promise<RecordShare[]> {
         const res = await this.query(
-            `SELECT * FROM ${this.tableName} WHERE group_id = $1 AND organization_id = $2 AND deleted_at IS NULL`,
+            `SELECT * FROM ${this.tableName} WHERE group_id = $1 AND organization_id = $2 `,
             [groupId, organizationId]
         );
         return res.rows;
@@ -46,7 +46,7 @@ export class RecordShareRepository extends BaseRepository<RecordShare> implement
 
     async findByRole(organizationId: string, roleId: string): Promise<RecordShare[]> {
         const res = await this.query(
-            `SELECT * FROM ${this.tableName} WHERE role_id = $1 AND organization_id = $2 AND deleted_at IS NULL`,
+            `SELECT * FROM ${this.tableName} WHERE role_id = $1 AND organization_id = $2 `,
             [roleId, organizationId]
         );
         return res.rows;
@@ -60,7 +60,7 @@ export class RecordShareRepository extends BaseRepository<RecordShare> implement
         // Service likely does logic. Let's start with direct share row existence.
 
         const res = await this.query(
-            `SELECT 1 FROM ${this.tableName} WHERE entity_type = $1 AND entity_id = $2 AND user_id = $3 AND organization_id = $4 AND deleted_at IS NULL`,
+            `SELECT 1 FROM ${this.tableName} WHERE entity_type = $1 AND entity_id = $2 AND user_id = $3 AND organization_id = $4 `,
             [entityType, entityId, userId, organizationId]
         );
         return (res.rowCount || 0) > 0;
@@ -68,7 +68,7 @@ export class RecordShareRepository extends BaseRepository<RecordShare> implement
 
     async deleteAllByRecord(organizationId: string, entityType: string, entityId: string): Promise<void> {
         await this.query(
-            `UPDATE ${this.tableName} SET deleted_at = NOW() WHERE entity_type = $1 AND entity_id = $2 AND organization_id = $3`,
+            `DELETE FROM ${this.tableName} WHERE entity_type = $1 AND entity_id = $2 AND organization_id = $3`,
             [entityType, entityId, organizationId]
         );
     }

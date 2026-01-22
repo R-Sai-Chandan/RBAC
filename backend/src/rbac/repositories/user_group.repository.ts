@@ -44,8 +44,7 @@ export class UserGroupRepository extends BaseRepository<UserGroup> implements IU
 
         // We'll use soft delete:
         const query = `
-            UPDATE ${this.tableName} 
-            SET deleted_at = NOW() 
+            DELETE FROM ${this.tableName} 
             WHERE user_id = $1 AND group_id = $2 AND organization_id = $3
         `;
         await this.query(query, [userId, groupId, organizationId]);
@@ -54,7 +53,7 @@ export class UserGroupRepository extends BaseRepository<UserGroup> implements IU
     async findUsersByGroup(organizationId: string, groupId: string): Promise<UserGroup[]> {
         const query = `
             SELECT * FROM ${this.tableName} 
-            WHERE group_id = $1 AND organization_id = $2 AND deleted_at IS NULL
+            WHERE group_id = $1 AND organization_id = $2 
         `;
         const res = await this.query(query, [groupId, organizationId]);
         return res.rows;
@@ -63,7 +62,7 @@ export class UserGroupRepository extends BaseRepository<UserGroup> implements IU
     async findGroupsByUser(organizationId: string, userId: string): Promise<UserGroup[]> {
         const query = `
             SELECT * FROM ${this.tableName} 
-            WHERE user_id = $1 AND organization_id = $2 AND deleted_at IS NULL
+            WHERE user_id = $1 AND organization_id = $2
         `;
         const res = await this.query(query, [userId, organizationId]);
         return res.rows;

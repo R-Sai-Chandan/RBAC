@@ -271,7 +271,7 @@ exports.seed = async function (knex) {
     // 9. GROUPS
     // ─────────────────────────────────────────────────────────────
     await knex('groups').insert([
-        { id: 1, organization_id: org.id, name: 'All Users', code: 'ALL_USERS', is_active: true, created_by: users[0].id }
+        { id: 1, organization_id: org.id, name: 'All Users', is_active: true, created_by: users[0].id }
     ]);
 
     await knex('user_groups').insert([

@@ -19,14 +19,14 @@ export abstract class BaseRepository<T> {
 
     async findById(organizationId: string, id: string): Promise<T | null> {
         const res = await this.query(
-            `SELECT * FROM ${this.tableName} WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL`,
+            `SELECT * FROM ${this.tableName} WHERE id = $1 AND organization_id = $2`,
             [id, organizationId]
         );
         return res.rows[0] || null;
     }
 
     async findAll(organizationId: string, filters?: Record<string, unknown>): Promise<T[]> {
-        let query = `SELECT * FROM ${this.tableName} WHERE organization_id = $1 AND deleted_at IS NULL`;
+        let query = `SELECT * FROM ${this.tableName} WHERE organization_id = $1 `;
         const params: unknown[] = [organizationId];
 
         // Simple filter implementation
@@ -78,7 +78,7 @@ export abstract class BaseRepository<T> {
 
     async delete(organizationId: string, id: string): Promise<void> {
         await this.query(
-            `UPDATE ${this.tableName} SET deleted_at = NOW() WHERE id = $1 AND organization_id = $2`,
+            `DELETE FROM ${this.tableName} WHERE id = $1 AND organization_id = $2`,
             [id, organizationId]
         );
     }

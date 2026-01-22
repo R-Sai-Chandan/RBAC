@@ -23,7 +23,7 @@ export class PermissionRepository extends BaseRepository<Permission> implements 
 
     async findByModuleAndAction(organizationId: string, moduleId: string, action: PermissionAction): Promise<Permission | null> {
         const res = await this.query(
-            `SELECT * FROM ${this.tableName} WHERE module_id = $1 AND action = $2 AND organization_id = $3 AND deleted_at IS NULL`,
+            `SELECT * FROM ${this.tableName} WHERE module_id = $1 AND action = $2 AND organization_id = $3 `,
             [moduleId, action, organizationId]
         );
         return res.rows[0] || null;

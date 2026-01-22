@@ -21,7 +21,7 @@ export class RoleRepository extends BaseRepository<Role> implements IRoleReposit
 
     async findByCode(organizationId: string, code: string): Promise<Role | null> {
         const res = await this.query(
-            `SELECT * FROM ${this.tableName} WHERE code = $1 AND organization_id = $2 AND deleted_at IS NULL`,
+            `SELECT * FROM ${this.tableName} WHERE code = $1 AND organization_id = $2 `,
             [code, organizationId]
         );
         return res.rows[0] || null;
@@ -33,7 +33,7 @@ export class RoleRepository extends BaseRepository<Role> implements IRoleReposit
 
     async findChildRoles(organizationId: string, roleId: string): Promise<Role[]> {
         const res = await this.query(
-            `SELECT * FROM ${this.tableName} WHERE parent_role_id = $1 AND organization_id = $2 AND deleted_at IS NULL`,
+            `SELECT * FROM ${this.tableName} WHERE parent_role_id = $1 AND organization_id = $2 `,
             [roleId, organizationId]
         );
         return res.rows;
@@ -43,7 +43,7 @@ export class RoleRepository extends BaseRepository<Role> implements IRoleReposit
         // Recursive CTE to find all ancestors
         const query = `
             WITH RECURSIVE ancestors AS (
-                SELECT * FROM ${this.tableName} WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL
+                SELECT * FROM ${this.tableName} WHERE id = $1 AND organization_id = $2 
                 UNION
                 SELECT r.* FROM ${this.tableName} r
                 INNER JOIN ancestors a ON a.parent_role_id = r.id

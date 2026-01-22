@@ -19,7 +19,7 @@ export class RoleProfileRepository extends BaseRepository<RoleProfile> implement
 
     async findProfilesByRole(organizationId: string, roleId: string): Promise<RoleProfile[]> {
         const res = await this.query(
-            `SELECT * FROM ${this.tableName} WHERE role_id = $1 AND organization_id = $2 AND deleted_at IS NULL`,
+            `SELECT * FROM ${this.tableName} WHERE role_id = $1 AND organization_id = $2`,
             [roleId, organizationId]
         );
         return res.rows;
@@ -27,7 +27,7 @@ export class RoleProfileRepository extends BaseRepository<RoleProfile> implement
 
     async findRolesByProfile(organizationId: string, profileId: string): Promise<RoleProfile[]> {
         const res = await this.query(
-            `SELECT * FROM ${this.tableName} WHERE profile_id = $1 AND organization_id = $2 AND deleted_at IS NULL`,
+            `SELECT * FROM ${this.tableName} WHERE profile_id = $1 AND organization_id = $2 `,
             [profileId, organizationId]
         );
         return res.rows;
@@ -35,7 +35,7 @@ export class RoleProfileRepository extends BaseRepository<RoleProfile> implement
 
     async hasProfile(organizationId: string, roleId: string, profileId: string): Promise<boolean> {
         const res = await this.query(
-            `SELECT 1 FROM ${this.tableName} WHERE role_id = $1 AND profile_id = $2 AND organization_id = $3 AND deleted_at IS NULL`,
+            `SELECT 1 FROM ${this.tableName} WHERE role_id = $1 AND profile_id = $2 AND organization_id = $3`,
             [roleId, profileId, organizationId]
         );
         return (res.rowCount || 0) > 0;
@@ -53,14 +53,14 @@ export class RoleProfileRepository extends BaseRepository<RoleProfile> implement
 
     async revoke(organizationId: string, roleId: string, profileId: string): Promise<void> {
         await this.query(
-            `UPDATE ${this.tableName} SET deleted_at = NOW() WHERE role_id = $1 AND profile_id = $2 AND organization_id = $3`,
+            `DELETE FROM ${this.tableName}  WHERE role_id = $1 AND profile_id = $2 AND organization_id = $3`,
             [roleId, profileId, organizationId]
         );
     }
 
     async revokeAllByRole(organizationId: string, roleId: string): Promise<void> {
         await this.query(
-            `UPDATE ${this.tableName} SET deleted_at = NOW() WHERE role_id = $1 AND organization_id = $2`,
+            `DELETE FROM ${this.tableName} WHERE role_id = $1 AND organization_id = $2`,
             [roleId, organizationId]
         );
     }

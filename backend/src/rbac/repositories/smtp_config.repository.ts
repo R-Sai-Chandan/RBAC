@@ -23,7 +23,7 @@ export class SmtpConfigRepository extends BaseRepository<SmtpConfig> implements 
 
     async findActiveByOrganization(organizationId: string): Promise<SmtpConfig | null> {
         const res = await this.query(
-            `SELECT * FROM ${this.tableName} WHERE is_active = true AND organization_id = $1 AND deleted_at IS NULL`,
+            `SELECT * FROM ${this.tableName} WHERE is_active = true AND organization_id = $1 `,
             [organizationId]
         );
         return res.rows[0] || null;

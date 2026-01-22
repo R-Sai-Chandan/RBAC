@@ -25,7 +25,7 @@ export class SharingRuleRepository extends BaseRepository<SharingRule> implement
 
     async findActiveByOrganization(organizationId: string): Promise<SharingRule[]> {
         const res = await this.query(
-            `SELECT * FROM ${this.tableName} WHERE is_active = true AND organization_id = $1 AND deleted_at IS NULL`,
+            `SELECT * FROM ${this.tableName} WHERE is_active = true AND organization_id = $1`,
             [organizationId]
         );
         return res.rows;
@@ -33,7 +33,7 @@ export class SharingRuleRepository extends BaseRepository<SharingRule> implement
 
     async findByType(organizationId: string, type: string): Promise<SharingRule[]> {
         const res = await this.query(
-            `SELECT * FROM ${this.tableName} WHERE rule_type = $1 AND organization_id = $2 AND deleted_at IS NULL`,
+            `SELECT * FROM ${this.tableName} WHERE rule_type = $1 AND organization_id = $2 `,
             [type, organizationId]
         );
         return res.rows;
@@ -41,7 +41,7 @@ export class SharingRuleRepository extends BaseRepository<SharingRule> implement
 
     async findByModule(organizationId: string, moduleId: string): Promise<SharingRule[]> {
         const res = await this.query(
-            `SELECT * FROM ${this.tableName} WHERE module_id = $1 AND organization_id = $2 AND deleted_at IS NULL`,
+            `SELECT * FROM ${this.tableName} WHERE module_id = $1 AND organization_id = $2 `,
             [moduleId, organizationId]
         );
         return res.rows;

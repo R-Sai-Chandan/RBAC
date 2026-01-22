@@ -24,7 +24,7 @@ export class GroupRepository extends BaseRepository<Group> implements IGroupRepo
 
     async findActiveByOrganization(organizationId: string): Promise<Group[]> {
         const res = await this.query(
-            `SELECT * FROM ${this.tableName} WHERE is_active = true AND organization_id = $1 AND deleted_at IS NULL`,
+            `SELECT * FROM ${this.tableName} WHERE is_active = true AND organization_id = $1 `,
             [organizationId]
         );
         return res.rows;
@@ -32,7 +32,7 @@ export class GroupRepository extends BaseRepository<Group> implements IGroupRepo
 
     async findByName(organizationId: string, name: string): Promise<Group | null> {
         const res = await this.query(
-            `SELECT * FROM ${this.tableName} WHERE name = $1 AND organization_id = $2 AND deleted_at IS NULL`,
+            `SELECT * FROM ${this.tableName} WHERE name = $1 AND organization_id = $2`,
             [name, organizationId]
         );
         return res.rows[0] || null;
