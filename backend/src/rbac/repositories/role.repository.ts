@@ -47,7 +47,7 @@ export class RoleRepository extends BaseRepository<Role> implements IRoleReposit
                 UNION
                 SELECT r.* FROM ${this.tableName} r
                 INNER JOIN ancestors a ON a.parent_role_id = r.id
-                WHERE r.organization_id = $2 AND r.deleted_at IS NULL
+                WHERE r.organization_id = $2
             )
             SELECT * FROM ancestors WHERE id != $1;
         `;

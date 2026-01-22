@@ -42,8 +42,10 @@ export abstract class BaseRepository<T> {
     }
 
     async create(organizationId: string, data: Record<string, unknown>): Promise<T> {
-        const keys = Object.keys(data);
-        const values = Object.values(data);
+        const { organization_id, ...cleanData } = data; 
+
+        const keys = Object.keys(cleanData);
+        const values = Object.values(cleanData);
         const indices = keys.map((_, i) => `$${i + 2}`).join(', ');
         const columns = keys.join(', ');
 

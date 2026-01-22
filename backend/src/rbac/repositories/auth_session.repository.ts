@@ -50,4 +50,21 @@ export class AuthSessionRepository extends BaseRepository<AuthSession> implement
         );
         return res.rows[0] || null;
     }
+
+    async update(organizationId: string, sessionId: string, data: Partial<AuthSession>): Promise<AuthSession> {
+        const keys = Object.keys(data);
+        const values = Object.values(data);
+        const setClause = keys.map((key, index) => `${key} = $${index + 3}`).join(', ');
+
+        const query = `
+            UPDATE ${this.tableName} 
+            SET ${setClause}
+            WHERE organization_id = $1 AND id = $2
+            RETURNING *
+        `;
+        const res = await this.query(query, [ organizationId, sessionId, ...values]);
+        if (res.rows.length === 0) throw new Error(`Entity ${sessionId} not found for update`);
+        return res.rows[0]!;
+}
+
 }
