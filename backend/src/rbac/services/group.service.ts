@@ -42,6 +42,11 @@ export interface IGroupService {
     listActive(organizationId: string): Promise<Group[]>;
 
     /**
+     * List all inactive groups in organization
+     */
+    listInactive(organizationId: string): Promise<Group[]>;
+
+    /**
      * Create new group
      * @throws DuplicateAssignmentError if name exists
      */
@@ -148,6 +153,11 @@ export class GroupService implements IGroupService {
     async listActive(organizationId: string): Promise<Group[]> {
         // TODO_TEST: Verify active group listing
         return await this.groupRepository.findActiveByOrganization(organizationId);
+    }
+
+    async listInactive(organizationId: string): Promise<Group[]> {
+        // TODO_TEST: Verify inactive group listing
+        return await this.groupRepository.findInactiveByOrganization(organizationId);
     }
 
     async create(

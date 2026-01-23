@@ -190,25 +190,7 @@ export class AuthSessionService implements IAuthSessionService {
         sessionId: string,
         actingUserId: string
     ): Promise<void> {
-        // Soft-delete style revocation by setting forced logout? 
-        // Or hard delete? User request says: "Revoke session (immediate invalidation)"
-        // But repository has delete(). Let's use delete() for revocation to remove it permanently,
-        // OR better: set logout_at to now if it's not already set, or create a separate revoked_at if schema permitted.
-        // Given constraints: "Active session = logout_at IS NULL", setting logout_at effectively revokes access.
-        // However, repository.delete() is typically used for administrative removal. 
-        // Let's use strict logout first to ensure historical record if we don't hard delete?
-        // Actually, the IAuthSessionService interface defines `revoke` which calls repository.delete logic in previous version.
-        // We will stick to hard delete for revocation as per method name, or strictly set logout_at if we want audit trail.
-        // User instructions: "Rules: Active session = logout_at IS NULL".
-        // Let's force logout to maintain history (Audit-heavy requirement). 
-        // BUT repository interface has `delete`. 
-        // Decision: Revoke = Force Logout. Hard delete destroys audit trail which violates "Audit-heavy" requirement.
-        // However, if we MUST use `this.authSessionRepository.delete()`, we lose history.
-        // Let's CHANGE behavior to force-logout instead, ignoring the `delete` method if possible? 
-        // No, I must use existing repositories. If `delete` exists, I should use it if `revoke` implies removal.
-        // Let's assume Audit Log captures the event before deletion.
-
-        await this.authSessionRepository.delete(organizationId, sessionId);
+        await this.authSessionRepository.delete(organizationId, sessionId, actingUserId);
 
         // TODO: Audit Log (Revoke)
     }

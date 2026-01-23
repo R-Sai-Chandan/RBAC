@@ -14,7 +14,7 @@ exports.up = async function (knex) {
     table.bigInteger('module_id').unsigned().notNullable()
       .references('id').inTable('modules').onDelete('CASCADE');
     table.bigInteger('record_id').notNullable();
-
+    table.boolean('is_active').defaultTo(true);
     // === Metadata / optional fields ===
     table.bigInteger('shared_with_user_id').unsigned();
     table.bigInteger('shared_with_group_id').unsigned();

@@ -50,7 +50,6 @@ exports.seed = async function (knex) {
     // ─────────────────────────────────────────────────────────────
     const [org] = await knex('organizations')
         .insert({
-            id: 1,
             company_name: 'Acme Corp', // Changed from name to company_name
             // Required Address Fields
             address: '123 Enterprise Blvd',
@@ -76,7 +75,7 @@ exports.seed = async function (knex) {
     const users = await knex('users')
         .insert([
             {
-                id: 1,
+
                 organization_id: org.id,
                 username: 'superadmin',
                 password_hash: passwordHash,
@@ -89,7 +88,7 @@ exports.seed = async function (knex) {
                 created_at: knex.fn.now()
             },
             {
-                id: 2,
+
                 organization_id: org.id,
                 username: 'admin',
                 password_hash: passwordHash,
@@ -102,7 +101,7 @@ exports.seed = async function (knex) {
                 created_at: knex.fn.now()
             },
             {
-                id: 3,
+
                 organization_id: org.id,
                 username: 'user',
                 password_hash: passwordHash,
@@ -129,7 +128,7 @@ exports.seed = async function (knex) {
     // ─────────────────────────────────────────────────────────────
     await knex('roles').insert([
         {
-            id: 1,
+
             organization_id: org.id,
             name: 'Super Admin',
             code: 'SUPER_ADMIN',
@@ -139,7 +138,7 @@ exports.seed = async function (knex) {
             created_by: users[0].id
         },
         {
-            id: 2,
+
             organization_id: org.id,
             name: 'Administrator',
             code: 'ADMIN',
@@ -149,7 +148,7 @@ exports.seed = async function (knex) {
             created_by: users[0].id
         },
         {
-            id: 3,
+
             organization_id: org.id,
             name: 'User',
             code: 'USER',
@@ -172,13 +171,13 @@ exports.seed = async function (knex) {
     // 5. MODULES (Granular resources for Permission granularity)
     // ─────────────────────────────────────────────────────────────
     const modulesList = [
-        { id: 2, name: 'Users', code: 'USERS', description: 'User Management' },
-        { id: 3, name: 'Roles', code: 'ROLES', description: 'Role Management' },
-        { id: 4, name: 'Profiles', code: 'PROFILES', description: 'Profile Management' },
-        { id: 5, name: 'Groups', code: 'GROUPS', description: 'Group Management' },
-        { id: 6, name: 'Sharing Rules', code: 'SHARING', description: 'Record Sharing Configuration' },
-        { id: 7, name: 'Audit Logs', code: 'AUDIT', description: 'System Audit Logs' },
-        { id: 8, name: 'SMTP Config', code: 'SMTP_CONFIG', description: 'Email Server Configuration' }
+        { name: 'Users', code: 'USERS', description: 'User Management' },
+        { name: 'Roles', code: 'ROLES', description: 'Role Management' },
+        { name: 'Profiles', code: 'PROFILES', description: 'Profile Management' },
+        { name: 'Groups', code: 'GROUPS', description: 'Group Management' },
+        { name: 'Sharing Rules', code: 'SHARING', description: 'Record Sharing Configuration' },
+        { name: 'Audit Logs', code: 'AUDIT', description: 'System Audit Logs' },
+        { name: 'SMTP Config', code: 'SMTP_CONFIG', description: 'Email Server Configuration' }
     ];
 
     const modules = await knex('modules')
@@ -237,8 +236,8 @@ exports.seed = async function (knex) {
     // 7. PROFILES
     // ─────────────────────────────────────────────────────────────
     await knex('profiles').insert([
-        { id: 1, organization_id: org.id, name: 'Admin Profile', code: 'ADMIN_PROFILE', is_active: true, created_by: users[0].id },
-        { id: 2, organization_id: org.id, name: 'Standard Profile', code: 'USER_PROFILE', is_active: true, created_by: users[0].id }
+        { organization_id: org.id, name: 'Admin Profile', code: 'ADMIN_PROFILE', is_active: true, created_by: users[0].id },
+        { organization_id: org.id, name: 'Standard Profile', code: 'USER_PROFILE', is_active: true, created_by: users[0].id }
     ]);
 
     // ─────────────────────────────────────────────────────────────
@@ -271,7 +270,7 @@ exports.seed = async function (knex) {
     // 9. GROUPS
     // ─────────────────────────────────────────────────────────────
     await knex('groups').insert([
-        { id: 1, organization_id: org.id, name: 'All Users', code: 'ALL_USERS', is_active: true, created_by: users[0].id }
+        { organization_id: org.id, name: 'All Users', is_active: true, created_by: users[0].id }
     ]);
 
     await knex('user_groups').insert([

@@ -11,74 +11,83 @@ export interface ModuleTemplate {
 
 export const CORE_MODULES: ModuleTemplate[] = [
     {
-        code: 'users',
+        code: 'USERS',
         name: 'Users',
-        description: 'Manage system users and access',
+        description: 'User Management',
         is_core: true,
         default_active: true,
         sort_order: 10,
         actions: ['read', 'create', 'update', 'delete', 'export']
     },
     {
-        code: 'roles',
+        code: 'ROLES',
         name: 'Roles',
-        description: 'Manage roles and hierarchies',
+        description: 'Role Management',
         is_core: true,
         default_active: true,
         sort_order: 20,
         actions: ['read', 'create', 'update', 'delete', 'export']
     },
     {
-        code: 'profiles',
+        code: 'PROFILES',
         name: 'Profiles',
-        description: 'Manage permissions and profiles',
+        description: 'Profile Management',
         is_core: true,
         default_active: true,
         sort_order: 30,
-        actions: ['read', 'create', 'update', 'delete', 'export', 'manage_permissions']
+        actions: ['read', 'create', 'update', 'delete', 'export']
     },
     {
-        code: 'groups',
+        code: 'GROUPS',
         name: 'Groups',
-        description: 'Manage user groups',
+        description: 'Group Management',
         is_core: true,
         default_active: true,
         sort_order: 40,
         actions: ['read', 'create', 'update', 'delete', 'export']
     },
     {
-        code: 'sharing_rules',
+        code: 'SHARING',
         name: 'Sharing Rules',
-        description: 'Manage data sharing policies',
+        description: 'Record Sharing Configuration',
         is_core: true,
         default_active: true,
         sort_order: 50,
-        actions: ['read', 'create', 'update', 'delete']
+        actions: ['read', 'create', 'update', 'delete', 'export']
     },
     {
-        code: 'audit_logs',
+        code: 'AUDIT',
         name: 'Audit Logs',
-        description: 'View system audit trails',
+        description: 'System Audit Logs',
         is_core: true,
         default_active: true,
         sort_order: 100,
-        actions: ['read', 'export']
+        actions: ['read', 'create', 'update', 'delete', 'export']
     },
     // SETTINGS / CONFIG Modules
     {
-        code: 'smtp_config',
+        code: 'SMTP_CONFIG',
         name: 'SMTP Configuration',
-        description: 'Manage email settings',
+        description: 'Email Server Configuration',
         is_core: true,
         default_active: true,
         sort_order: 80,
-        actions: ['read', 'update']
+        actions: ['read', 'create', 'update', 'delete', 'export']
+    },
+    {
+        code: 'AUTH',
+        name: 'Authentication',
+        description: 'Authentication Configuration',
+        is_core: true,
+        default_active: true,
+        sort_order: 90,
+        actions: ['read', 'create', 'update', 'delete', 'export']
     }
 ];
 
 export const PRODUCT_MODULES: ModuleTemplate[] = [
     {
-        code: 'leads',
+        code: 'LEADS',
         name: 'Leads',
         description: 'Sales Leads',
         is_core: false,
@@ -87,7 +96,7 @@ export const PRODUCT_MODULES: ModuleTemplate[] = [
         actions: ['read', 'create', 'update', 'delete', 'convert', 'export']
     },
     {
-        code: 'deals',
+        code: 'DEALS',
         name: 'Deals',
         description: 'Sales Opportunities',
         is_core: false,

@@ -1,44 +1,52 @@
-mkdir RBAC
-cd RBAC
+Erorrs currently-
+there is a missing authentication module eberywhere so we can show anything regarding authentication(as a repository as well as a frontend view)
+should change rbac seed as well as the module-template.ts to be having them when it is created
 
-mkdir backend
-cd backend
+make suername automatic creation based on organization name 
 
-npm init -y
-npm install express cors dotenv prisma @prisma/client
-npx prisma init
-
-mkdir src
-cd src
-mkdir rbac
-cd rbac
-mkdir middleware routes seed services
-touch index.js
-cd ..
-
-touch app.js prisma.js
-cd ..
-touch server.js
-
-cd ..
-npm create vite@latest frontend
-cd frontend
-npm install
-npm run dev
+remove base repository depedency
+remove hard delete adn add softdelete when applicatebe(is_active)
+cehck all the api and amke sure that it is working
+upadte forntend
+decide about the extra thignw e mgiht require 
 
 
-IF IMPORTING CODE FROM GITHUB-
-AFTER cloning it -
-cd backend
-npm install
-cd..
-cd frontend
-npm install
-npm run dev
+audit-log.repository.ts=
+findAll(organizationId: string, filters?)
+update(organizationId: string, id: string, data)
+delete(organizationId: string, id: string)
 
-also do the below command after databse problems are done-
-npx prisma generate
-npx prisma migrate dev
+mode.repository.ts=
+update(organizationId: string, id: string, data)
+delete(organizationId: string, id: string)
+
+organization.repository.ts=
+findAll()
+
+permission.repository.ts=
+findAll(organizationId: string, filters?)
+
+record-share.repository.ts=
+findAll(organizationId: string, filters?)
+update(organizationId: string, id: string, data)
+
+role-profile.repository.ts=
+findById(organizationId: string, id: string)
+findAll(organizationId: string, filters?)
+
+role.repository.ts=
+findAll(organizationId: string, filters?)
+
+smtp-config.repository.ts
+findAll(organizationId: string, filters?)
 
 
-IF THIS IS SUCCESSFULL THEN SETUP IS COMPLETE
+
+we must add a method iunbto organization.routes.ts since we are having to goign to seed it for the new orgs
+
+
+not added limit and offset in all the api
+
+
+if we update the module name in the module-template.ts
+we must update orgnaization,smtp,roles and user as well as record sahre and sharing rules. Rest of them are updated

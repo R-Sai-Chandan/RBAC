@@ -5,7 +5,7 @@
  * Wires up all dependencies and strict routing.
  * Enforces the /rbac namespace.
  */
-
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import { Pool } from 'pg';
@@ -51,7 +51,7 @@ import { createRBACRouter } from './rbac/routes';
 const PORT = process.env.PORT || 3000;
 const DB_CONFIG = {
     // In production, load from env
-    connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/rbac_db' // Fallback for dev
+    connectionString: process.env.DATABASE_URL  // Fallback for dev
 };
 
 async function startServer() {

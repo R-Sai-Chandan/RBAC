@@ -16,7 +16,7 @@ export interface Role {
     description?: string | null;
 
     // Hierarchy
-    readonly parent_role_id?: string | null; // BigInt
+    parent_role_id?: string | null; // BigInt
 
     // Status
     is_active: boolean;

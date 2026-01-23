@@ -61,7 +61,7 @@ export function createRBACRouter(deps: RBACRouterDeps): Router {
     // ═══════════════════════════════════════════════════════════════════════
     // PUBLIC ROUTES (No Auth Required)
     // ═══════════════════════════════════════════════════════════════════════
-    const publicAuthRouter = createPublicAuthRouter(deps.authSessionService, deps.userRepository);
+    const publicAuthRouter = createPublicAuthRouter(deps.authSessionService, deps.userRepository, deps.evaluationService);
     router.use('/auth', publicAuthRouter); // /rbac/auth/login
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -70,7 +70,7 @@ export function createRBACRouter(deps: RBACRouterDeps): Router {
     router.use(authenticate);
 
     // Protected Auth Routes (Logout, Sessions)
-    const protectedAuthRouter = createProtectedAuthRouter(deps.authSessionService);
+    const protectedAuthRouter = createProtectedAuthRouter(deps.authSessionService, deps.evaluationService);
     router.use('/auth', protectedAuthRouter); // /rbac/auth/logout, /rbac/auth/sessions
 
     // Identity & Navigation (Self-service, no admin permission required)

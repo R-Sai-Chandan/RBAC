@@ -11,6 +11,7 @@ export interface RecordShare {
     readonly organization_id: string; // BigInt
     readonly module_id: string; // BigInt
     readonly record_id: string; // BigInt (Generic ID)
+    is_active: boolean;
 
     // Shared Agent
     shared_with_user_id?: string | null; // BigInt

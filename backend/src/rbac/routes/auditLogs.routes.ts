@@ -23,7 +23,7 @@ export function createAuditLogsRouter(
         const normalized = action.toLowerCase();
         if (normalized === 'create') return AuditAction.CREATE;
         if (normalized === 'update') return AuditAction.UPDATE;
-        if (normalized === 'delete') return AuditAction.DELETE;
+        //if (normalized === 'delete') return AuditAction.DELETE;
         return null;
     }
 
@@ -40,7 +40,7 @@ export function createAuditLogsRouter(
             if (action) {
                 const auditAction = toAuditAction(action as string);
                 if (!auditAction) {
-                    res.status(400).json({ error: 'Bad Request', message: 'Invalid action. Must be create, update, or delete.' });
+                    res.status(400).json({ error: 'Bad Request', message: 'Invalid action. Must be create, update' });
                     return;
                 }
                 logs = await auditService.getByAction(

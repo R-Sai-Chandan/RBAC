@@ -6,7 +6,7 @@
  * MUST NOT: Evaluate permissions, manage record shares directly, manage users/roles/groups
  */
 
-import { SharingRule, SharingRuleType } from '../models/sharing_rule.model';
+import { SharingRule, SharingRuleType, SharingMode } from '../models/sharing_rule.model';
 import { ISharingRuleRepository } from '../repositories/sharing_rule.repository';
 import { RBACInternalError } from '../errors/rbac.errors';
 
@@ -45,6 +45,7 @@ export interface ISharingRuleService {
         organizationId: string,
         data: {
             rule_type: SharingRuleType;
+            sharing_mode: SharingMode;
             source_user_id?: string;
             target_user_id?: string;
             source_role_id?: string;
@@ -118,6 +119,7 @@ export class SharingRuleService implements ISharingRuleService {
         organizationId: string,
         data: {
             rule_type: SharingRuleType;
+            sharing_mode: SharingMode;
             source_user_id?: string;
             target_user_id?: string;
             source_role_id?: string;
@@ -136,6 +138,7 @@ export class SharingRuleService implements ISharingRuleService {
 
         const ruleData: Omit<SharingRule, 'id' | 'organization_id' | 'created_at'> = {
             rule_type: data.rule_type,
+            sharing_mode: data.sharing_mode,
             source_user_id: data.source_user_id || null,
             target_user_id: data.target_user_id || null,
             source_role_id: data.source_role_id || null,
