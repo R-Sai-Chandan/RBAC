@@ -61,7 +61,7 @@ export class ProfilePermissionRepository implements IProfilePermissionRepository
     async updateEffect(organizationId: string, profileId: string, permissionId: string, effect: ProfilePermissionEffect): Promise<ProfilePermission> {
         const query = `
             UPDATE ${this.tableName}
-            SET effect = $4, updated_at = NOW()
+            SET effect = $4
             WHERE profile_id = $1 AND permission_id = $2 AND organization_id = $3
             RETURNING *
         `;

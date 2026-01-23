@@ -112,9 +112,11 @@ export class RoleRepository implements IRoleRepository {
     }
 
     async delete(organizationId: string, id: string): Promise<void> {
+        // Soft delete: Set is_active to false instead of physical deletion
         await this.query(
-            `DELETE FROM ${this.tableName} WHERE id = $1 AND organization_id = $2`,
+            `UPDATE ${this.tableName} SET is_active = false WHERE id = $1 AND organization_id = $2`,
             [id, organizationId]
         );
     }
+
 }

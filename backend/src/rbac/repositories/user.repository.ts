@@ -125,10 +125,12 @@ export class UserRepository implements IUserRepository {
     }
 
     async delete(organizationId: string, userId: string): Promise<void> {
+        // Soft delete: Set status to 'deleted' instead of physical deletion
         await this.query(
-            `DELETE FROM ${this.tableName} WHERE id = $1 AND organization_id = $2`,
+            `UPDATE ${this.tableName} SET status = 'deleted' WHERE id = $1 AND organization_id = $2`,
             [userId, organizationId]
         );
     }
+
 }
 
