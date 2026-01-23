@@ -10,6 +10,8 @@ export interface IProfilePermissionRepository {
     updateEffect(organizationId: string, profileId: string, permissionId: string, effect: ProfilePermissionEffect): Promise<ProfilePermission>;
     revoke(organizationId: string, profileId: string, permissionId: string): Promise<void>;
     revokeAllByProfile(organizationId: string, profileId: string): Promise<void>;
+    replacePermissions(organizationId: string, profileId: string, permissionIds: string[]): Promise<void>;
+    batchAssign(organizationId: string, profileId: string, permissionIds: string[]): Promise<void>;
 }
 
 export class ProfilePermissionRepository implements IProfilePermissionRepository {
@@ -81,6 +83,33 @@ export class ProfilePermissionRepository implements IProfilePermissionRepository
         await this.query(
             `DELETE FROM ${this.tableName} WHERE profile_id = $1 AND organization_id = $2`,
             [profileId, organizationId]
+        );
+    }
+
+    async replacePermissions(organizationId: string, profileId: string, permissionIds: string[]): Promise<void> {
+        // Authoritative set replacement: delete all, then insert new
+        await this.revokeAllByProfile(organizationId, profileId);
+        if (permissionIds.length > 0) {
+            await this.batchAssign(organizationId, profileId, permissionIds);
+        }
+    }
+
+    async batchAssign(organizationId: string, profileId: string, permissionIds: string[]): Promise<void> {
+        if (permissionIds.length === 0) return;
+
+        const values = permissionIds.map((permId, i) => {
+            const base = i * 3;
+            return `($${base + 1}, $${base + 2}, $${base + 3})`;
+        }).join(', ');
+
+        const params: unknown[] = [];
+        permissionIds.forEach(permId => {
+            params.push(organizationId, profileId, permId);
+        });
+
+        await this.query(
+            `INSERT INTO ${this.tableName} (organization_id, profile_id, permission_id) VALUES ${values}`,
+            params
         );
     }
 }

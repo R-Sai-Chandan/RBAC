@@ -21,6 +21,10 @@ export function getRequiredParam(params: ParamsDictionary, key: string): string 
         throw new Error(`Required parameter '${key}' is missing`);
     }
 
+    if (value == undefined) {
+        throw new Error(`Required parameter '${key}' is missing`);
+    }
+
     if (typeof value !== 'string') {
         throw new Error(`Parameter '${key}' must be a string, got array`);
     }
@@ -36,6 +40,10 @@ export function getOptionalParam(params: ParamsDictionary, key: string): string 
     const value = params[key];
 
     if (!value) {
+        return undefined;
+    }
+
+    if (value == undefined) {
         return undefined;
     }
 
@@ -55,6 +63,10 @@ export function getRequiredQuery(query: Query, key: string): string {
     const value = query[key];
 
     if (!value) {
+        throw new Error(`Required query parameter '${key}' is missing`);
+    }
+
+    if (value == undefined) {
         throw new Error(`Required query parameter '${key}' is missing`);
     }
 

@@ -13,6 +13,14 @@ export enum SharingRuleType {
     RECORD_LEVEL = 'record_level'
 }
 
+export enum SharingMode {
+    PUBLIC_READ = 'public_read',
+    PUBLIC_RW = 'public_rw',
+    PUBLIC_RWD = 'public_rwd',
+    PRIVATE = 'private',
+    RECORD_LEVEL = 'record_level'
+}
+
 export interface SharingRule {
     readonly id: string; // BigInt
     readonly organization_id: string; // BigInt
@@ -30,6 +38,8 @@ export interface SharingRule {
     target_group_id?: string | null; // BigInt
 
     module_id?: string | null; // BigInt
+
+    sharing_mode: SharingMode;
 
     // Metadata
     is_active: boolean;

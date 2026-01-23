@@ -160,6 +160,7 @@ export class RecordShareService implements IRecordShareService {
             shared_with_user_id: data.shared_with_user_id || null,
             shared_with_group_id: data.shared_with_group_id || null,
             shared_with_role_id: data.shared_with_role_id || null,
+            is_active: true,
             created_by: actingUserId
         };
 

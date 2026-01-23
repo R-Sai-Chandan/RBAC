@@ -9,6 +9,7 @@ export interface IPermissionRepository {
     delete(organizationId: string, id: string): Promise<void>;
     findById(organizationId: string, id: string): Promise<Permission | null>;
     findByModuleAndAction(organizationId: string, moduleId: string, action: PermissionAction): Promise<Permission | null>;
+    findByIds(organizationId: string, ids: string[]): Promise<Permission[]>;
 }
 
 export class PermissionRepository implements IPermissionRepository {
@@ -91,6 +92,17 @@ export class PermissionRepository implements IPermissionRepository {
             `UPDATE ${this.tableName} SET is_active = false WHERE id = $1 AND organization_id = $2`,
             [id, organizationId]
         );
+    }
+
+    async findByIds(organizationId: string, ids: string[]): Promise<Permission[]> {
+        if (ids.length === 0) return [];
+
+        const placeholders = ids.map((_, i) => `$${i + 2}`).join(', ');
+        const res = await this.query<Permission>(
+            `SELECT * FROM ${this.tableName} WHERE organization_id = $1 AND id IN (${placeholders})`,
+            [organizationId, ...ids]
+        );
+        return res.rows;
     }
 
 }

@@ -6,7 +6,7 @@ export interface IAuthSessionRepository {
     create(organizationId: string, data: any): Promise<AuthSession>;
     findById(organizationId: string, sessionId: string): Promise<AuthSession | null>;
     update(organizationId: string, sessionId: string, data: any): Promise<AuthSession>;
-    delete(organizationId: string, sessionId: string): Promise<void>;
+    delete(organizationId: string, sessionId: string, actingUserId: string): Promise<void>;
     findAllByUser(organizationId: string, userId: string): Promise<AuthSession[]>;
     findActiveByUser(organizationId: string, userId: string): Promise<AuthSession[]>;
     deleteAllByUser(organizationId: string, userId: string): Promise<void>;
@@ -100,10 +100,10 @@ export class AuthSessionRepository implements IAuthSessionRepository {
         return res.rows[0]!;
     }
 
-    async delete(organizationId: string, sessionId: string): Promise<void> {
+    async delete(organizationId: string, sessionId: string, actingUserId: string): Promise<void> {
         await this.query(
-            `DELETE FROM ${this.tableName} WHERE id = $1 AND organization_id = $2`,
-            [sessionId, organizationId]
+            `DELETE FROM ${this.tableName} WHERE id = $1 AND organization_id = $2 AND user_id = $3`,
+            [sessionId, organizationId, actingUserId]
         );
     }
 }

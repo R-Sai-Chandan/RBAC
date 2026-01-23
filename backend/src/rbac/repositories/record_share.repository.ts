@@ -75,11 +75,13 @@ export class RecordShareRepository implements IRecordShareRepository {
     }
 
     async deleteAllByRecord(organizationId: string, entityType: string, entityId: string): Promise<void> {
+        // Soft delete: Set is_active to false for all shares of this record
         await this.query(
-            `DELETE FROM ${this.tableName} WHERE entity_type = $1 AND entity_id = $2 AND organization_id = $3`,
+            `UPDATE ${this.tableName} SET is_active = false WHERE entity_type = $1 AND entity_id = $2 AND organization_id = $3`,
             [entityType, entityId, organizationId]
         );
     }
+
 
     async create(organizationId: string, data: Record<string, unknown>): Promise<RecordShare> {
         const { organization_id, ...cleanData } = data;
@@ -100,9 +102,11 @@ export class RecordShareRepository implements IRecordShareRepository {
     }
 
     async delete(organizationId: string, id: string): Promise<void> {
+        // Soft delete: Set is_active to false instead of physical deletion
         await this.query(
-            `DELETE FROM ${this.tableName} WHERE id = $1 AND organization_id = $2`,
+            `UPDATE ${this.tableName} SET is_active = false WHERE id = $1 AND organization_id = $2`,
             [id, organizationId]
         );
     }
+
 }

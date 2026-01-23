@@ -35,7 +35,7 @@ export const CORE_MODULES: ModuleTemplate[] = [
         is_core: true,
         default_active: true,
         sort_order: 30,
-        actions: ['read', 'create', 'update', 'delete', 'export', 'manage_permissions']
+        actions: ['read', 'create', 'update', 'delete', 'export']
     },
     {
         code: 'GROUPS',
@@ -53,7 +53,7 @@ export const CORE_MODULES: ModuleTemplate[] = [
         is_core: true,
         default_active: true,
         sort_order: 50,
-        actions: ['read', 'create', 'update', 'delete']
+        actions: ['read', 'create', 'update', 'delete', 'export']
     },
     {
         code: 'AUDIT',
@@ -62,7 +62,7 @@ export const CORE_MODULES: ModuleTemplate[] = [
         is_core: true,
         default_active: true,
         sort_order: 100,
-        actions: ['read', 'export']
+        actions: ['read', 'create', 'update', 'delete', 'export']
     },
     // SETTINGS / CONFIG Modules
     {
@@ -72,7 +72,16 @@ export const CORE_MODULES: ModuleTemplate[] = [
         is_core: true,
         default_active: true,
         sort_order: 80,
-        actions: ['read', 'update']
+        actions: ['read', 'create', 'update', 'delete', 'export']
+    },
+    {
+        code: 'AUTH',
+        name: 'Authentication',
+        description: 'Authentication Configuration',
+        is_core: true,
+        default_active: true,
+        sort_order: 90,
+        actions: ['read', 'create', 'update', 'delete', 'export']
     }
 ];
 

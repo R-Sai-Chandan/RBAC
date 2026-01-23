@@ -11,13 +11,17 @@ import { IUserRepository } from '../repositories/user.repository';
 import { RBACInternalError } from '../errors/rbac.errors';
 import { getRequiredParam } from './_paramUtils';
 import { verifyPassword } from '../utils/crypto.utils';
+import { UserStatus } from '../models/user.model';
+import { IEvaluationService } from '../services/evaluation.service';
+import { validateLandingPage } from '../utils/landingPage.utils';
 
 // ---------------------------------------------------------------------------
 // PUBLIC ROUTER (Login) - No Authentication Required
 // ---------------------------------------------------------------------------
 export function createPublicAuthRouter(
     authSessionService: IAuthSessionService,
-    userRepository: IUserRepository
+    userRepository: IUserRepository,
+    evaluationService: IEvaluationService
 ): Router {
     const router = Router();
 
@@ -48,13 +52,7 @@ export function createPublicAuthRouter(
 
             const organizationId = user.organization_id;
 
-            // 3. Verify Status
-            if (user.status !== 'active') {
-                res.status(401).json({ error: 'Unauthorized', message: 'Account inactive' });
-                return;
-            }
-
-            // 4. Verify Password
+            // 3. Verify Password FIRST
             if (!user.password_hash) {
                 res.status(401).json({ error: 'Unauthorized', message: 'Invalid credentials' });
                 return;
@@ -65,6 +63,18 @@ export function createPublicAuthRouter(
                 res.status(401).json({ error: 'Unauthorized', message: 'Invalid credentials' });
                 return;
             }
+
+            // 4. Verify Status
+            if (user.status === UserStatus.DELETED) {
+                res.status(401).json({ error: 'Unauthorized', message: 'Invalid credentials' });
+                return;
+            }
+
+            if (user.status === UserStatus.INACTIVE) {
+                res.status(401).json({ error: 'Unauthorized', message: 'Invalid credentials' });
+                return;
+            }
+
 
             // 5. Create Session
             const userAgent = req.get('user-agent');
@@ -84,7 +94,15 @@ export function createPublicAuthRouter(
                 maxAge: 24 * 60 * 60 * 1000
             });
 
-            // 7. Return User Context
+            // 7. Validate and determine default landing page
+            const landingPage = await validateLandingPage(
+                user.default_landing_page,
+                organizationId,
+                user.id,
+                evaluationService
+            );
+
+            // 8. Return User Context with landing page
             const fullName = `${user.first_name || ''} ${user.last_name || ''}`.trim();
             res.status(201).json({
                 data: {
@@ -93,7 +111,8 @@ export function createPublicAuthRouter(
                         username: user.username,
                         fullName: fullName || user.username,
                         email: user.primary_email
-                    }
+                    },
+                    defaultLandingPage: landingPage
                 }
             });
 
@@ -110,7 +129,8 @@ export function createPublicAuthRouter(
 // PROTECTED ROUTER (Logout, Management) - Authentication Required
 // ---------------------------------------------------------------------------
 export function createProtectedAuthRouter(
-    authSessionService: IAuthSessionService
+    authSessionService: IAuthSessionService,
+    evaluationService: IEvaluationService
 ): Router {
     const router = Router();
 
@@ -151,29 +171,42 @@ export function createProtectedAuthRouter(
     });
 
     // GET /auth-sessions/:id - Get session by ID
+    // GET /auth-sessions/:id - Get session by ID
     router.get('/sessions/:id', async (req: Request, res: Response) => {
         try {
             const { id: userId, organizationId } = req.user!;
+            const sessionId = getRequiredParam(req.params, 'id');
 
-            const id = getRequiredParam(req.params, 'id');
-            const session = await authSessionService.getById(organizationId, id);
+            // 1. Fetch session (scoped to org)
+            const session = await authSessionService.getById(organizationId, sessionId);
 
-            // SECURITY: Ensure user owns this session OR has admin permission (omitted for now)
-            if (session.user_id !== userId) {
-                res.status(403).json({ error: 'Forbidden', message: 'Access denied to this session' });
+            // 2. Owner shortcut
+            if (session.user_id === userId) {
+                res.json({ data: session });
                 return;
             }
 
+            // 3. Not owner → require READ permission
+            await evaluationService.enforcePermission(
+                organizationId,
+                userId,
+                'AUTH_SESSIONS',
+                'read'
+            );
+
+            // 4. Allowed via permission
             res.json({ data: session });
+
         } catch (error) {
             if (error instanceof RBACInternalError) {
                 res.status(404).json({ error: 'Not Found', message: error.message });
                 return;
             }
             console.error('Error getting auth session:', error);
-            res.status(500).json({ error: 'Internal Server Error' });
+            res.status(403).json({ error: 'Forbidden', message: 'Access denied' });
         }
     });
+
 
     // DELETE /auth-sessions/:id - Revoke session
     router.delete('/sessions/:id', async (req: Request, res: Response) => {
@@ -181,17 +214,27 @@ export function createProtectedAuthRouter(
             const { id: userId, organizationId } = req.user!;
 
             const id = getRequiredParam(req.params, 'id');
-
-            // SECURITY: Ensure user owns this session OR has admin permission
-            // For now, restrictive Owner-Only unless expanded
             const session = await authSessionService.getById(organizationId, id);
-            if (session.user_id !== userId) {
-                res.status(403).json({ error: 'Forbidden', message: 'Access denied to this session' });
+
+            // Owner shortcut
+            if (session.user_id === userId) {
+                await authSessionService.revoke(organizationId, id, userId);
+                res.status(204).send();
                 return;
             }
 
+            // Not owner → require DELETE permission
+            await evaluationService.enforcePermission(
+                organizationId,
+                userId,
+                'AUTH_SESSIONS',
+                'delete'
+            );
+
+            // Allowed via permission
             await authSessionService.revoke(organizationId, id, userId);
             res.status(204).send();
+
         } catch (error) {
             console.error('Error revoking session:', error);
             res.status(500).json({ error: 'Internal Server Error' });

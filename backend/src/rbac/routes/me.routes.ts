@@ -9,22 +9,11 @@ import { Router, Request, Response } from 'express';
 import { IUserRepository } from '../repositories/user.repository';
 import { IUserRoleRepository } from '../repositories/user_role.repository';
 import { IEvaluationService } from '../services/evaluation.service';
-
-// Safe fallback landing page
-const SAFE_FALLBACK_PAGE = '/rbac/profile';
-
-// Valid landing pages (server-side validation)
-const VALID_LANDING_PAGES = [
-    '/rbac/profile',
-    '/rbac/profile',
-    '/rbac/users',
-    '/rbac/roles',
-    '/rbac/profiles',
-    '/rbac/groups',
-    '/rbac/sharing-rules',
-    '/rbac/smtp-config',
-    '/rbac/audit-logs'
-];
+import {
+    validateLandingPage,
+    VALID_LANDING_PAGES,
+    PATH_PERMISSION_REQUIREMENTS
+} from '../utils/landingPage.utils';
 
 export function createMeRouter(
     userRepository: IUserRepository,
@@ -55,36 +44,12 @@ export function createMeRouter(
             const roleIds = userRoles.map(ur => ur.role_id);
 
             // 3. Validate defaultLandingPage server-side
-            let landingPage = user.default_landing_page || SAFE_FALLBACK_PAGE;
-
-            // Check if landing page is valid
-            if (!VALID_LANDING_PAGES.includes(landingPage)) {
-                landingPage = SAFE_FALLBACK_PAGE;
-            }
-
-            // Verify permission for the requested landing page
-            // Map paths to (MODULE, ACTION) requirements
-            const pathRequirements: { [key: string]: [string, string] } = {
-                '/rbac/users': ['USERS', 'read'],
-                '/rbac/roles': ['ROLES', 'read'],
-                '/rbac/profiles': ['PROFILES', 'read'],
-                '/rbac/groups': ['GROUPS', 'read'],
-                '/rbac/sharing-rules': ['SHARING', 'read'],
-                '/rbac/smtp-config': ['SMTP_CONFIG', 'read'],
-                '/rbac/audit-logs': ['AUDIT', 'read']
-            };
-
-            const requirement = Object.entries(pathRequirements).find(([path]) => landingPage.startsWith(path));
-
-            if (requirement) {
-                const [_, [moduleCode, action]] = requirement;
-                const decision = await evaluationService.evaluate(
-                    organizationId, userId, moduleCode, action
-                );
-                if (!decision.granted) {
-                    landingPage = SAFE_FALLBACK_PAGE;
-                }
-            }
+            const landingPage = await validateLandingPage(
+                user.default_landing_page,
+                organizationId,
+                userId,
+                evaluationService
+            );
 
             // 4. Construct Response
             const fullName = `${user.first_name || ''} ${user.last_name || ''}`.trim();
@@ -232,18 +197,10 @@ export function createMeRouter(
                     return;
                 }
 
-                // Verify permission for the requested landing page
-                const pathRequirements: { [key: string]: [string, string] } = {
-                    '/rbac/users': ['USERS', 'read'],
-                    '/rbac/roles': ['ROLES', 'read'],
-                    '/rbac/profiles': ['PROFILES', 'read'],
-                    '/rbac/groups': ['GROUPS', 'read'],
-                    '/rbac/sharing-rules': ['SHARING', 'read'],
-                    '/rbac/smtp-config': ['SMTP_CONFIG', 'read'],
-                    '/rbac/audit-logs': ['AUDIT', 'read']
-                };
-
-                const requirement = Object.entries(pathRequirements).find(([path]) => defaultLandingPage.startsWith(path));
+                // Verify permission for the requested landing page using shared constants
+                const requirement = Object.entries(PATH_PERMISSION_REQUIREMENTS).find(
+                    ([path]) => defaultLandingPage.startsWith(path)
+                );
 
                 if (requirement) {
                     const [_, [moduleCode, action]] = requirement;

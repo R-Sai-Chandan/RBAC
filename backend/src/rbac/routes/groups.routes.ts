@@ -20,10 +20,20 @@ export function createGroupsRouter(
     const router = Router();
 
     // GET /groups -> READ
-    router.get('/', requirePermission('GROUPS', 'read', evaluationService, auditService), async (req: Request, res: Response) => {
+    router.get('/active', requirePermission('GROUPS', 'read', evaluationService, auditService), async (req: Request, res: Response) => {
         try {
 
-            const groups = await groupService.listAll(req.user!.organizationId);
+            const groups = await groupService.listActive(req.user!.organizationId);
+            res.json({ data: groups });
+        } catch (error) {
+            console.error('Error listing groups:', error);
+            res.status(500).json({ error: 'Internal Server Error' });
+        }
+    });
+    router.get('/inactive', requirePermission('GROUPS', 'read', evaluationService, auditService), async (req: Request, res: Response) => {
+        try {
+
+            const groups = await groupService.listInactive(req.user!.organizationId);
             res.json({ data: groups });
         } catch (error) {
             console.error('Error listing groups:', error);

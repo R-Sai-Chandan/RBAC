@@ -13,6 +13,7 @@ import { IProfileRepository } from '../repositories/profile.repository';
 import { IProfilePermissionRepository } from '../repositories/profile_permission.repository';
 import { IPermissionRepository } from '../repositories/permission.repository';
 import { IAuditService } from './audit.service';
+import { ProfileResponseDto, ProfilePermissionFlagDto } from '../dto/profile.dto';
 import {
     ProfileNotFoundError,
     PermissionNotFoundError,
@@ -113,6 +114,34 @@ export interface IProfileService {
         permission: Permission;
         effect: ProfilePermissionEffect;
     }>>;
+
+    /**
+     * Get profile with all permissions (allowed true/false) for frontend
+     */
+    getProfileWithPermissions(organizationId: string, profileId: string): Promise<ProfileResponseDto>;
+
+    /**
+     * Create profile with permissions in one transaction
+     */
+    createProfile(
+        organizationId: string,
+        data: {
+            name: string;
+            description?: string;
+            permission_ids: string[];
+        },
+        actingUserId: string
+    ): Promise<{ id: string }>;
+
+    /**
+     * Replace all permissions for a profile (authoritative set replacement)
+     */
+    updateProfilePermissions(
+        organizationId: string,
+        profileId: string,
+        permissionIds: string[],
+        actingUserId: string
+    ): Promise<void>;
 }
 
 /**
@@ -298,5 +327,118 @@ export class ProfileService implements IProfileService {
         }
 
         return result;
+    }
+
+    async getProfileWithPermissions(organizationId: string, profileId: string): Promise<ProfileResponseDto> {
+        // Fetch profile
+        const profile = await this.getById(organizationId, profileId);
+
+        // Fetch ALL permissions for organization (immutable, seeded)
+        const allPermissions = await this.permissionRepository.findAllByOrganization(organizationId);
+
+        // Fetch assigned permission IDs
+        const assignedIds = await this.profileRepository.getAssignedPermissionIds(organizationId, profileId);
+        const assignedSet = new Set(assignedIds);
+
+        // Build permission flags - DO NOT send is_active to frontend
+        const permissions: ProfilePermissionFlagDto[] = allPermissions.map(perm => ({
+            id: perm.id,
+            code: `${perm.module_id}.${perm.action}`,
+            allowed: assignedSet.has(perm.id)
+        }));
+
+        return {
+            id: profile.id,
+            name: profile.name,
+            description: profile.description ?? null,
+            permissions
+        };
+    }
+
+    async createProfile(
+        organizationId: string,
+        data: {
+            name: string;
+            description?: string;
+            permission_ids: string[];
+        },
+        actingUserId: string
+    ): Promise<{ id: string }> {
+        // Validate permission_ids exist
+        if (data.permission_ids.length > 0) {
+            const permissions = await this.permissionRepository.findByIds(organizationId, data.permission_ids);
+            if (permissions.length !== data.permission_ids.length) {
+                throw new PermissionNotFoundError(organizationId, 'One or more permission IDs are invalid');
+            }
+        }
+
+        // Create profile
+        const profileData: Omit<Profile, 'id' | 'organization_id' | 'created_at'> = {
+            name: data.name,
+            code: data.name.toUpperCase().replace(/\s+/g, '_'), // Auto-generate code
+            description: data.description || null,
+            is_active: true,
+            created_by: actingUserId
+        };
+
+        const profile = await this.profileRepository.create(organizationId, profileData);
+
+        // Assign permissions
+        if (data.permission_ids.length > 0) {
+            await this.profilePermissionRepository.batchAssign(organizationId, profile.id, data.permission_ids);
+        }
+
+        // Audit
+        await this.auditService.log(organizationId, {
+            user_id: actingUserId,
+            action: AuditAction.CREATE,
+            entity_type: 'profile',
+            entity_id: profile.id,
+            new_values: { name: data.name, permission_count: data.permission_ids.length },
+            status: AuditStatus.SUCCESS
+        }).catch(err => console.error('Audit logging failed:', err));
+
+        return { id: profile.id };
+    }
+
+    async updateProfilePermissions(
+        organizationId: string,
+        profileId: string,
+        permissionIds: string[],
+        actingUserId: string
+    ): Promise<void> {
+        // Verify profile exists
+        await this.getById(organizationId, profileId);
+
+        // Validate permission IDs exist
+        if (permissionIds.length > 0) {
+            const permissions = await this.permissionRepository.findByIds(organizationId, permissionIds);
+            if (permissions.length !== permissionIds.length) {
+                throw new PermissionNotFoundError(organizationId, 'One or more permission IDs are invalid');
+            }
+        }
+
+        // Fetch current state for audit
+        const before = await this.profileRepository.getAssignedPermissionIds(organizationId, profileId);
+
+        // Authoritative set replacement
+        await this.profilePermissionRepository.replacePermissions(organizationId, profileId, permissionIds);
+
+        // Compute diff for audit
+        const beforeSet = new Set(before);
+        const afterSet = new Set(permissionIds);
+        const added = permissionIds.filter(id => !beforeSet.has(id));
+        const removed = before.filter(id => !afterSet.has(id));
+
+        // Audit with diff
+        await this.auditService.log(organizationId, {
+            user_id: actingUserId,
+            action: AuditAction.UPDATE,
+            entity_type: 'profile',
+            entity_id: profileId,
+            old_values: { permissions: before, removed },
+            new_values: { permissions: permissionIds, added },
+            status: AuditStatus.SUCCESS
+        }).catch(err => console.error('Audit logging failed:', err));
     }
 }

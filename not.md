@@ -40,3 +40,13 @@ findAll(organizationId: string, filters?)
 smtp-config.repository.ts
 findAll(organizationId: string, filters?)
 
+
+
+we must add a method iunbto organization.routes.ts since we are having to goign to seed it for the new orgs
+
+
+not added limit and offset in all the api
+
+
+if we update the module name in the module-template.ts
+we must update orgnaization,smtp,roles and user as well as record sahre and sharing rules. Rest of them are updated

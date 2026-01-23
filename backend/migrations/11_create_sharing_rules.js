@@ -14,6 +14,9 @@ exports.up = async function (knex) {
 
     table.string('rule_type').notNullable(); // replaced enum with string + check
 
+    table.string('sharing_mode').notNullable()
+      .checkIn(['public_read', 'public_rw', 'public_rwd', 'private', 'record_level']);
+
     // === Source/Target References ===
     table.bigInteger('source_user_id').unsigned();
     table.bigInteger('target_user_id').unsigned();

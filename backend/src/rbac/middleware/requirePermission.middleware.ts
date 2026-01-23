@@ -82,6 +82,19 @@ export function requirePermission(
                     action
                 );
 
+                // AUDIT: Permission granted
+                await auditService.log(organizationId, {
+                    user_id: userId,
+                    action: AuditAction.UPDATE,
+                    entity_type: 'permission_check',
+                    entity_id: `${moduleCode}:${action}`,
+                    status: AuditStatus.SUCCESS,
+                    ip_address: req.ip,
+                    user_agent: req.get('user-agent'),
+                    old_values: null,
+                    new_values: { moduleCode, action }
+                }).catch(() => { });
+
                 // Permission granted - proceed
                 next();
 
@@ -91,7 +104,7 @@ export function requirePermission(
                     // Audit denial
                     await auditService.log(organizationId, {
                         user_id: userId,
-                        action: AuditAction.UPDATE, // Generic action for permission check
+                        action: AuditAction.UPDATE,
                         entity_type: 'permission_check',
                         entity_id: `${moduleCode}:${action}`,
                         status: AuditStatus.FAILED,
@@ -103,10 +116,7 @@ export function requirePermission(
                             action,
                             reason: error.reason
                         }
-                    }).catch(auditError => {
-                        // CRITICAL: Never fail request due to audit failure
-                        console.error('Audit logging failed:', auditError);
-                    });
+                    }).catch(() => { });
 
                     res.status(403).json({
                         error: 'Forbidden',
@@ -122,6 +132,18 @@ export function requirePermission(
                 }
 
                 if (error instanceof TenantMismatchError) {
+                    await auditService.log(organizationId, {
+                        user_id: userId,
+                        action: AuditAction.UPDATE,
+                        entity_type: 'permission_check',
+                        entity_id: `${moduleCode}:${action}`,
+                        status: AuditStatus.FAILED,
+                        ip_address: req.ip,
+                        user_agent: req.get('user-agent'),
+                        old_values: null,
+                        new_values: { reason: 'TENANT_MISMATCH' }
+                    }).catch(() => { });
+
                     res.status(403).json({
                         error: 'Forbidden',
                         message: 'Organization mismatch',
@@ -131,6 +153,18 @@ export function requirePermission(
                 }
 
                 if (error instanceof InvalidModuleActionError) {
+                    await auditService.log(organizationId, {
+                        user_id: userId,
+                        action: AuditAction.UPDATE,
+                        entity_type: 'permission_check',
+                        entity_id: `${moduleCode}:${action}`,
+                        status: AuditStatus.FAILED,
+                        ip_address: req.ip,
+                        user_agent: req.get('user-agent'),
+                        old_values: null,
+                        new_values: { reason: 'INVALID_MODULE_ACTION' }
+                    }).catch(() => { });
+
                     res.status(400).json({
                         error: 'Bad Request',
                         message: error.message,
@@ -142,6 +176,19 @@ export function requirePermission(
                 if (error instanceof RBACInternalError) {
                     // FAIL-CLOSED: Internal error = deny access
                     console.error('RBAC Internal Error:', error);
+
+                    await auditService.log(organizationId, {
+                        user_id: userId,
+                        action: AuditAction.UPDATE,
+                        entity_type: 'permission_check',
+                        entity_id: `${moduleCode}:${action}`,
+                        status: AuditStatus.FAILED,
+                        ip_address: req.ip,
+                        user_agent: req.get('user-agent'),
+                        old_values: null,
+                        new_values: { reason: 'RBAC_INTERNAL_ERROR' }
+                    }).catch(() => { });
+
                     res.status(500).json({
                         error: 'Internal Server Error',
                         message: 'Permission evaluation failed',
@@ -152,6 +199,19 @@ export function requirePermission(
 
                 // FAIL-CLOSED: Unknown error = deny access
                 console.error('Unknown error in permission middleware:', error);
+
+                await auditService.log(organizationId, {
+                    user_id: userId,
+                    action: AuditAction.UPDATE,
+                    entity_type: 'permission_check',
+                    entity_id: `${moduleCode}:${action}`,
+                    status: AuditStatus.FAILED,
+                    ip_address: req.ip,
+                    user_agent: req.get('user-agent'),
+                    old_values: null,
+                    new_values: { reason: 'UNKNOWN_ERROR' }
+                }).catch(() => { });
+
                 res.status(500).json({
                     error: 'Internal Server Error',
                     message: 'Permission evaluation failed',
@@ -163,6 +223,21 @@ export function requirePermission(
         } catch (error) {
             // FAIL-CLOSED: Outer catch for any unexpected errors
             console.error('Critical error in permission middleware:', error);
+
+            if (req.user?.organizationId && req.user?.id) {
+                await auditService.log(req.user.organizationId, {
+                    user_id: req.user.id,
+                    action: AuditAction.UPDATE,
+                    entity_type: 'permission_check',
+                    entity_id: `${moduleCode}:${action}`,
+                    status: AuditStatus.FAILED,
+                    ip_address: req.ip,
+                    user_agent: req.get('user-agent'),
+                    old_values: null,
+                    new_values: { reason: 'MIDDLEWARE_ERROR' }
+                }).catch(() => { });
+            }
+
             res.status(500).json({
                 error: 'Internal Server Error',
                 message: 'Permission check failed',

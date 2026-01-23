@@ -10,6 +10,7 @@ export interface IGroupRepository {
     findAllByOrganization(organizationId: string): Promise<Group[]>;
     findActiveByOrganization(organizationId: string): Promise<Group[]>;
     findByName(organizationId: string, name: string): Promise<Group | null>;
+    findInactiveByOrganization(organizationId: string): Promise<Group[]>;
 }
 
 export class GroupRepository implements IGroupRepository {
@@ -54,6 +55,14 @@ export class GroupRepository implements IGroupRepository {
             [name, organizationId]
         );
         return res.rows[0] || null;
+    }
+
+    async findInactiveByOrganization(organizationId: string): Promise<Group[]> {
+        const res = await this.query<Group>(
+            `SELECT * FROM ${this.tableName} WHERE is_active = false AND organization_id = $1 `,
+            [organizationId]
+        );
+        return res.rows;
     }
 
     async create(organizationId: string, data: Record<string, unknown>): Promise<Group> {

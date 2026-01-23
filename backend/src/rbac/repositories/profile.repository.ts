@@ -10,6 +10,7 @@ export interface IProfileRepository {
     findByCode(organizationId: string, code: string): Promise<Profile | null>;
     findAllByOrganization(organizationId: string): Promise<Profile[]>;
     findActiveByOrganization(organizationId: string): Promise<Profile[]>;
+    getAssignedPermissionIds(organizationId: string, profileId: string): Promise<string[]>;
 }
 
 export class ProfileRepository implements IProfileRepository {
@@ -100,6 +101,14 @@ export class ProfileRepository implements IProfileRepository {
             `UPDATE ${this.tableName} SET is_active = false WHERE id = $1 AND organization_id = $2`,
             [id, organizationId]
         );
+    }
+
+    async getAssignedPermissionIds(organizationId: string, profileId: string): Promise<string[]> {
+        const res = await this.query<{ permission_id: string }>(
+            `SELECT permission_id FROM profile_permissions WHERE profile_id = $1 AND organization_id = $2`,
+            [profileId, organizationId]
+        );
+        return res.rows.map(row => row.permission_id);
     }
 
 }
