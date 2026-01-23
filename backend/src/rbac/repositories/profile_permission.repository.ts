@@ -1,6 +1,5 @@
 
-import { Pool } from 'pg';
-import { BaseRepository } from './base.repository';
+import { Pool, QueryResultRow } from 'pg';
 import { ProfilePermission, ProfilePermissionEffect } from '../models/profile_permission.model';
 
 export interface IProfilePermissionRepository {
@@ -13,13 +12,20 @@ export interface IProfilePermissionRepository {
     revokeAllByProfile(organizationId: string, profileId: string): Promise<void>;
 }
 
-export class ProfilePermissionRepository extends BaseRepository<ProfilePermission> implements IProfilePermissionRepository {
-    constructor(pool: InstanceType<typeof Pool>) {
-        super(pool, 'profile_permissions');
+export class ProfilePermissionRepository implements IProfilePermissionRepository {
+    private tableName = 'profile_permissions';
+
+    constructor(private pool: InstanceType<typeof Pool>) { }
+
+    protected async query<T extends QueryResultRow>(
+        text: string,
+        params?: unknown[]
+    ): Promise<{ rows: T[], rowCount: number | null }> {
+        return this.pool.query<T>(text, params);
     }
 
     async findPermissionsByProfile(organizationId: string, profileId: string): Promise<ProfilePermission[]> {
-        const res = await this.query(
+        const res = await this.query<ProfilePermission>(
             `SELECT * FROM ${this.tableName} WHERE profile_id = $1 AND organization_id = $2 `,
             [profileId, organizationId]
         );
@@ -27,7 +33,7 @@ export class ProfilePermissionRepository extends BaseRepository<ProfilePermissio
     }
 
     async findProfilesByPermission(organizationId: string, permissionId: string): Promise<ProfilePermission[]> {
-        const res = await this.query(
+        const res = await this.query<ProfilePermission>(
             `SELECT * FROM ${this.tableName} WHERE permission_id = $1 AND organization_id = $2`,
             [permissionId, organizationId]
         );
@@ -35,7 +41,7 @@ export class ProfilePermissionRepository extends BaseRepository<ProfilePermissio
     }
 
     async findAssignment(organizationId: string, profileId: string, permissionId: string): Promise<ProfilePermission | null> {
-        const res = await this.query(
+        const res = await this.query<ProfilePermission>(
             `SELECT * FROM ${this.tableName} WHERE profile_id = $1 AND permission_id = $2 AND organization_id = $3 `,
             [profileId, permissionId, organizationId]
         );
@@ -48,7 +54,7 @@ export class ProfilePermissionRepository extends BaseRepository<ProfilePermissio
             VALUES ($1, $2, $3, $4)
             RETURNING *
         `;
-        const res = await this.query(query, [organizationId, profileId, permissionId, effect]);
+        const res = await this.query<ProfilePermission>(query, [organizationId, profileId, permissionId, effect]);
         return res.rows[0]!;
     }
 
@@ -59,7 +65,7 @@ export class ProfilePermissionRepository extends BaseRepository<ProfilePermissio
             WHERE profile_id = $1 AND permission_id = $2 AND organization_id = $3
             RETURNING *
         `;
-        const res = await this.query(query, [profileId, permissionId, organizationId, effect]);
+        const res = await this.query<ProfilePermission>(query, [profileId, permissionId, organizationId, effect]);
         if (!res.rows.length) throw new Error('Assignment not found');
         return res.rows[0]!;
     }

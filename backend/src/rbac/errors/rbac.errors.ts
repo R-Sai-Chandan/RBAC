@@ -79,9 +79,9 @@ export class RBACInternalError extends RBACError {
         public readonly cause?: Error
     ) {
         super(`RBAC Internal Error: ${message}`);
-        if (cause) {
-            this.stack = `${this.stack}\nCaused by: ${cause.stack}`;
-        }
+        // if (cause) {
+        //    this.stack = `${this.stack}\nCaused by: ${cause.stack}`;
+        //}
     }
 }
 

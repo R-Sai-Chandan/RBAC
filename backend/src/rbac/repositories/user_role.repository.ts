@@ -1,6 +1,5 @@
 
-import { Pool } from 'pg';
-import { BaseRepository } from './base.repository';
+import { Pool, QueryResultRow } from 'pg';
 import { UserRole } from '../models/user_role.model';
 
 export interface IUserRoleRepository {
@@ -12,13 +11,20 @@ export interface IUserRoleRepository {
     revokeAllByUser(organizationId: string, userId: string): Promise<void>;
 }
 
-export class UserRoleRepository extends BaseRepository<UserRole> implements IUserRoleRepository {
-    constructor(pool: InstanceType<typeof Pool>) {
-        super(pool, 'user_roles');
+export class UserRoleRepository implements IUserRoleRepository {
+    private tableName = 'user_roles';
+
+    constructor(private pool: InstanceType<typeof Pool>) { }
+
+    protected async query<T extends QueryResultRow>(
+        text: string,
+        params?: unknown[]
+    ): Promise<{ rows: T[], rowCount: number | null }> {
+        return this.pool.query<T>(text, params);
     }
 
     async findRolesByUser(organizationId: string, userId: string): Promise<UserRole[]> {
-        const res = await this.query(
+        const res = await this.query<UserRole>(
             `SELECT * FROM ${this.tableName} WHERE user_id = $1 AND organization_id = $2 `,
             [userId, organizationId]
         );
@@ -26,7 +32,7 @@ export class UserRoleRepository extends BaseRepository<UserRole> implements IUse
     }
 
     async findUsersByRole(organizationId: string, roleId: string): Promise<UserRole[]> {
-        const res = await this.query(
+        const res = await this.query<UserRole>(
             `SELECT * FROM ${this.tableName} WHERE role_id = $1 AND organization_id = $2 `,
             [roleId, organizationId]
         );
@@ -42,13 +48,12 @@ export class UserRoleRepository extends BaseRepository<UserRole> implements IUse
     }
 
     async assign(organizationId: string, userId: string, roleId: string, assignedBy?: string): Promise<UserRole> {
-        // Upsert or Insert
         const query = `
             INSERT INTO ${this.tableName} (organization_id, user_id, role_id, assigned_by)
             VALUES ($1, $2, $3, $4)
             RETURNING *
         `;
-        const res = await this.query(query, [organizationId, userId, roleId, assignedBy]);
+        const res = await this.query<UserRole>(query, [organizationId, userId, roleId, assignedBy]);
         return res.rows[0]!;
     }
 

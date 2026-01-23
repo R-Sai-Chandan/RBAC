@@ -1,6 +1,5 @@
 
-import { Pool } from 'pg';
-import { BaseRepository } from './base.repository';
+import { Pool, QueryResultRow } from 'pg';
 import { RoleProfile } from '../models/role_profile.model';
 
 export interface IRoleProfileRepository {
@@ -12,13 +11,20 @@ export interface IRoleProfileRepository {
     revokeAllByRole(organizationId: string, roleId: string): Promise<void>;
 }
 
-export class RoleProfileRepository extends BaseRepository<RoleProfile> implements IRoleProfileRepository {
-    constructor(pool: InstanceType<typeof Pool>) {
-        super(pool, 'role_profiles');
+export class RoleProfileRepository implements IRoleProfileRepository {
+    private tableName = 'role_profiles';
+
+    constructor(private pool: InstanceType<typeof Pool>) { }
+
+    protected async query<T extends QueryResultRow>(
+        text: string,
+        params?: unknown[]
+    ): Promise<{ rows: T[], rowCount: number | null }> {
+        return this.pool.query<T>(text, params);
     }
 
     async findProfilesByRole(organizationId: string, roleId: string): Promise<RoleProfile[]> {
-        const res = await this.query(
+        const res = await this.query<RoleProfile>(
             `SELECT * FROM ${this.tableName} WHERE role_id = $1 AND organization_id = $2`,
             [roleId, organizationId]
         );
@@ -26,7 +32,7 @@ export class RoleProfileRepository extends BaseRepository<RoleProfile> implement
     }
 
     async findRolesByProfile(organizationId: string, profileId: string): Promise<RoleProfile[]> {
-        const res = await this.query(
+        const res = await this.query<RoleProfile>(
             `SELECT * FROM ${this.tableName} WHERE profile_id = $1 AND organization_id = $2 `,
             [profileId, organizationId]
         );
@@ -47,7 +53,7 @@ export class RoleProfileRepository extends BaseRepository<RoleProfile> implement
             VALUES ($1, $2, $3, $4)
             RETURNING *
         `;
-        const res = await this.query(query, [organizationId, roleId, profileId, assignedBy]);
+        const res = await this.query<RoleProfile>(query, [organizationId, roleId, profileId, assignedBy]);
         return res.rows[0]!;
     }
 

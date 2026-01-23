@@ -1,6 +1,5 @@
 
-import { Pool } from 'pg';
-import { BaseRepository } from './base.repository';
+import { Pool, QueryResultRow } from 'pg';
 import { RecordShare } from '../models/record_share.model';
 
 export interface IRecordShareRepository {
@@ -15,13 +14,28 @@ export interface IRecordShareRepository {
     deleteAllByRecord(organizationId: string, entityType: string, entityId: string): Promise<void>;
 }
 
-export class RecordShareRepository extends BaseRepository<RecordShare> implements IRecordShareRepository {
-    constructor(pool: InstanceType<typeof Pool>) {
-        super(pool, 'record_shares');
+export class RecordShareRepository implements IRecordShareRepository {
+    private tableName = 'record_shares';
+
+    constructor(private pool: InstanceType<typeof Pool>) { }
+
+    protected async query<T extends QueryResultRow>(
+        text: string,
+        params?: unknown[]
+    ): Promise<{ rows: T[], rowCount: number | null }> {
+        return this.pool.query<T>(text, params);
+    }
+
+    async findById(organizationId: string, id: string): Promise<RecordShare | null> {
+        const res = await this.query<RecordShare>(
+            `SELECT * FROM ${this.tableName} WHERE id = $1 AND organization_id = $2`,
+            [id, organizationId]
+        );
+        return res.rows[0] || null;
     }
 
     async findByRecord(organizationId: string, entityType: string, entityId: string): Promise<RecordShare[]> {
-        const res = await this.query(
+        const res = await this.query<RecordShare>(
             `SELECT * FROM ${this.tableName} WHERE entity_type = $1 AND entity_id = $2 AND organization_id = $3`,
             [entityType, entityId, organizationId]
         );
@@ -29,7 +43,7 @@ export class RecordShareRepository extends BaseRepository<RecordShare> implement
     }
 
     async findByUser(organizationId: string, userId: string): Promise<RecordShare[]> {
-        const res = await this.query(
+        const res = await this.query<RecordShare>(
             `SELECT * FROM ${this.tableName} WHERE user_id = $1 AND organization_id = $2 `,
             [userId, organizationId]
         );
@@ -37,7 +51,7 @@ export class RecordShareRepository extends BaseRepository<RecordShare> implement
     }
 
     async findByGroup(organizationId: string, groupId: string): Promise<RecordShare[]> {
-        const res = await this.query(
+        const res = await this.query<RecordShare>(
             `SELECT * FROM ${this.tableName} WHERE group_id = $1 AND organization_id = $2 `,
             [groupId, organizationId]
         );
@@ -45,7 +59,7 @@ export class RecordShareRepository extends BaseRepository<RecordShare> implement
     }
 
     async findByRole(organizationId: string, roleId: string): Promise<RecordShare[]> {
-        const res = await this.query(
+        const res = await this.query<RecordShare>(
             `SELECT * FROM ${this.tableName} WHERE role_id = $1 AND organization_id = $2 `,
             [roleId, organizationId]
         );
@@ -53,12 +67,6 @@ export class RecordShareRepository extends BaseRepository<RecordShare> implement
     }
 
     async isSharedWithUser(organizationId: string, entityType: string, entityId: string, userId: string): Promise<boolean> {
-        // Complex check: Direct, Group, or Role
-        // This query needs to join with user_roles/groups, but we'll stick to direct user check here for the basic implementation
-        // The service usually aggregates, but if this method is strictly "Is there a share record for this user?", we check direct share.
-        // Or does it imply effective share?
-        // Service likely does logic. Let's start with direct share row existence.
-
         const res = await this.query(
             `SELECT 1 FROM ${this.tableName} WHERE entity_type = $1 AND entity_id = $2 AND user_id = $3 AND organization_id = $4 `,
             [entityType, entityId, userId, organizationId]
@@ -70,6 +78,31 @@ export class RecordShareRepository extends BaseRepository<RecordShare> implement
         await this.query(
             `DELETE FROM ${this.tableName} WHERE entity_type = $1 AND entity_id = $2 AND organization_id = $3`,
             [entityType, entityId, organizationId]
+        );
+    }
+
+    async create(organizationId: string, data: Record<string, unknown>): Promise<RecordShare> {
+        const { organization_id, ...cleanData } = data;
+
+        const keys = Object.keys(cleanData);
+        const values = Object.values(cleanData);
+        const indices = keys.map((_, i) => `$${i + 2}`).join(', ');
+        const columns = keys.join(', ');
+
+        const query = `
+            INSERT INTO ${this.tableName} (organization_id, ${columns})
+            VALUES ($1, ${indices})
+            RETURNING *
+        `;
+
+        const res = await this.query<RecordShare>(query, [organizationId, ...values]);
+        return res.rows[0]!;
+    }
+
+    async delete(organizationId: string, id: string): Promise<void> {
+        await this.query(
+            `DELETE FROM ${this.tableName} WHERE id = $1 AND organization_id = $2`,
+            [id, organizationId]
         );
     }
 }

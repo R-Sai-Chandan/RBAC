@@ -29,7 +29,7 @@ exports.up = async function (knex) {
 
     table.string('gstin').notNullable();
 
-    //table.boolean('is_active').defaultTo(true);
+    table.boolean('is_active').defaultTo(true);
 
     table.timestamp('created_at').defaultTo(knex.fn.now());
     table.bigInteger('created_by').unsigned();
